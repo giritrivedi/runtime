@@ -150,6 +150,10 @@
 
 #endif
 
+#include <dlfcn.h>
+static const char* RuntimeStartupSemaphoreName = "st";
+static const char* RuntimeContinueSemaphoreName = "co";
+
 static inline MonoType*
 mono_get_object_type_dbg (void)
 {
@@ -763,9 +767,258 @@ mono_debugger_is_disconnected (void)
 	return disconnected;
 }
 
+#pragma pack(push,1)
+// When creating the semaphore name on Mac running in a sandbox, We reference this structure as a byte array
+// in order to encode its data into a string. Its important to make sure there is no padding between the fields
+// and also at the end of the buffer. Hence, this structure is defined inside a pack(1)
+typedef struct UnambiguousProcessDescriptor
+{
+    uint64_t m_disambiguationKey;
+    DWORD m_processId;
+}UnambiguousProcessDescriptor;
+#pragma pack(pop)
+
+static void SetLastError( DWORD dwLastError)
+{
+	// Reuse errno to store last error
+	errno = dwLastError;
+};
+
+/*++
+ Function:
+  GetProcessIdDisambiguationKey
+
+  Get a numeric value that can be used to disambiguate between processes with the same PID,
+  provided that one of them is still running. The numeric value can mean different things
+  on different platforms, so it should not be used for any other purpose. Under the hood,
+  it is implemented based on the creation time of the process.
+--*/
+static BOOL GetProcessIdDisambiguationKey(uint32_t processId, uint64_t *disambiguationKey)
+{
+    if (disambiguationKey == NULL )
+    {
+        ASSERT(!"disambiguationKey argument cannot be null!");
+        return FALSE;
+    }
+
+    *disambiguationKey = 0;
+
+#if defined(__APPLE__) || defined(__FreeBSD__)
+
+    // On OS X, we return the process start time expressed in Unix time (the number of seconds
+    // since the start of the Unix epoch).
+    struct kinfo_proc info = {};
+    size_t size = sizeof(info);
+    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, processId };
+    int ret = ::sysctl(mib, sizeof(mib)/sizeof(*mib), &info, &size, nullptr, 0);
+
+    if (ret == 0)
+    {
+#if defined(__APPLE__)
+        timeval procStartTime = info.kp_proc.p_starttime;
+#else // __FreeBSD__
+        timeval procStartTime = info.ki_start;
+#endif
+        long secondsSinceEpoch = procStartTime.tv_sec;
+
+        *disambiguationKey = secondsSinceEpoch;
+        return TRUE;
+    }
+    else
+    {
+        ASSERT(!"Failed to get start time of a process.");
+        return FALSE;
+    }
+
+#elif defined(__NetBSD__)
+
+    // On NetBSD, we return the process start time expressed in Unix time (the number of seconds
+    // since the start of the Unix epoch).
+    kvm_t *kd;
+    int cnt;
+    struct kinfo_proc2 *info;
+
+    kd = kvm_open(nullptr, nullptr, nullptr, KVM_NO_FILES, "kvm_open");
+    if (kd == nullptr)
+    {
+        ASSERT(!"Failed to get start time of a process.");
+        return FALSE;
+    }
+
+    info = kvm_getproc2(kd, KERN_PROC_PID, processId, sizeof(struct kinfo_proc2), &cnt);
+    if (info == nullptr || cnt < 1)
+    {
+        kvm_close(kd);
+        ASSERT(!"Failed to get start time of a process.");
+        return FALSE;
+    }
+
+    kvm_close(kd);
+
+    long secondsSinceEpoch = info->p_ustart_sec;
+    *disambiguationKey = secondsSinceEpoch;
+
+    return TRUE;
+#elif HAVE_PROCFS_STAT || defined (__s390x__)
+		// Here we read /proc/<pid>/stat file to get the start time for the process.
+	// We return this value (which is expressed in jiffies since boot time).
+
+	// Making something like: /proc/123/stat
+	char stat_file_name [64];
+	snprintf (stat_file_name, sizeof (stat_file_name), "/proc/%d/stat", processId);
+
+	FILE *stat_file = fopen (stat_file_name, "r");
+	if (!stat_file) {
+		ASSERT (!"Failed to get start time of a process, fopen failed.");
+		return false;
+	}
+
+	char *line = NULL;
+	size_t line_len = 0;
+	if (getline (&line, &line_len, stat_file) == -1)
+	{
+		ASSERT (!"Failed to get start time of a process, getline failed.");
+		return false;
+	}
+
+	unsigned long long start_time;
+
+	// According to `man proc`, the second field in the stat file is the filename of the executable,
+	// in parentheses. Tokenizing the stat file using spaces as separators breaks when that name
+	// has spaces in it, so we start using sscanf_s after skipping everything up to and including the
+	// last closing paren and the space after it.
+	char *scan_start_position = strrchr (line, ')');
+	if (!scan_start_position || scan_start_position [1] == '\0') {
+		ASSERT (!"Failed to parse stat file contents with strrchr.");
+		return false;
+	}
+
+	scan_start_position += 2;
+
+	// All the format specifiers for the fields in the stat file are provided by 'man proc'.
+	int result_sscanf = sscanf (scan_start_position,
+		"%*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %*u %*u %*d %*d %*d %*d %*d %*d %llu \n",
+		&start_time);
+
+	if (result_sscanf != 1) {
+		ASSERT (!"Failed to parse stat file contents with sscanf.");
+		return false;
+	}
+
+	free (line);
+	fclose (stat_file);
+
+	*disambiguationKey= (uint64_t)start_time;
+	return true;
+
+#else
+    // If this is not OS X and we don't have /proc, we just return FALSE.
+    WARN("GetProcessIdDisambiguationKey was called but is not implemented on this platform!");
+    return FALSE;
+#endif
+}
+
+static void CreateSemaphoreName(char semName[CLR_SEM_MAX_NAMELEN], const char *semaphoreName,
+		                const UnambiguousProcessDescriptor unambiguousProcessDescriptor)
+{
+    int length = 0;
+    length = sprintf_s ( semName, CLR_SEM_MAX_NAMELEN, RuntimeSemaphoreNameFormat, semaphoreName,
+		         HashSemaphoreName(unambiguousProcessDescriptor.m_processId,
+			 unambiguousProcessDescriptor.m_disambiguationKey));
+    ASSERT(length > 0 && length < CLR_SEM_MAX_NAMELEN );
+}
+
+/*++
+    NotifyRuntimeStarted
+
+    Signals the debugger waiting for runtime startup notification to continue and
+    waits until the debugger signals us to continue.
+
+Parameters:
+    None
+
+Return value:
+    TRUE - successfully launched by debugger, FALSE - not launched or some failure in the handshake
+--*/
+static BOOL NotifyRuntimeStarted()
+{
+    char startupSemName[CLR_SEM_MAX_NAMELEN];
+    char continueSemName[CLR_SEM_MAX_NAMELEN];
+    sem_t *startupSem = SEM_FAILED;
+    sem_t *continueSem = SEM_FAILED;
+    BOOL launched = FALSE;
+
+    uint64_t processIdDisambiguationKey = 0;
+    int pid = (int )getpid();
+    GetProcessIdDisambiguationKey(pid, &processIdDisambiguationKey);
+
+    // If GetProcessIdDisambiguationKey failed for some reason, it should set the value
+    // to 0. We expect that anyone else making the semaphore name will also fail and thus
+    // will also try to use 0 as the value.
+    ASSERT(ret == TRUE || processIdDisambiguationKey == 0);
+
+    UnambiguousProcessDescriptor unambiguousProcessDescriptor;
+    unambiguousProcessDescriptor.m_processId = pid;
+    unambiguousProcessDescriptor.m_disambiguationKey = processIdDisambiguationKey;
+
+    CreateSemaphoreName(startupSemName, RuntimeStartupSemaphoreName, unambiguousProcessDescriptor);
+    CreateSemaphoreName(continueSemName, RuntimeContinueSemaphoreName, unambiguousProcessDescriptor);
+
+    TRACE("NotifyRuntimeStarted opening continue '%s' startup '%s'\n", continueSemName, startupSemName);
+
+    // Open the debugger startup semaphore. If it doesn't exists, then we do nothing and return
+    startupSem = sem_open(startupSemName, 0);
+    if (startupSem == SEM_FAILED)
+    {
+        TRACE("sem_open(%s) failed: %d (%s)\n", startupSemName, errno, strerror(errno));
+        goto exit;
+    }
+
+    continueSem = sem_open(continueSemName, 0);
+    if (continueSem == SEM_FAILED)
+    {
+        ASSERT("sem_open(%s) failed: %d (%s)\n", continueSemName, errno, strerror(errno));
+        goto exit;
+    }
+
+    // Wake up the debugger waiting for startup
+    if (sem_post(startupSem) != 0)
+    {
+        ASSERT("sem_post(startupSem) failed: errno is %d (%s)\n", errno, strerror(errno));
+        goto exit;
+    }
+
+    // Now wait until the debugger's runtime startup notification is finished
+    while (sem_wait(continueSem) != 0)
+    {
+        if (EINTR == errno)
+        {
+            TRACE("sem_wait() failed with EINTR; re-waiting");
+            continue;
+        }
+        ASSERT("sem_wait(continueSem) failed: errno is %d (%s)\n", errno, strerror(errno));
+        goto exit;
+    }
+
+    // Returns that the runtime was successfully launched for debugging
+    launched = TRUE;
+
+exit:
+    if (startupSem != SEM_FAILED)
+    {
+        sem_close(startupSem);
+    }
+    if (continueSem != SEM_FAILED)
+    {
+        sem_close(continueSem);
+    }
+    return launched;
+}
+
 void
 mono_debugger_agent_init_internal (void)
 {
+        NotifyRuntimeStarted();
 	if (!agent_config.enabled)
 		return;
 
@@ -3128,8 +3381,7 @@ compute_frame_info (MonoInternalThread *thread, DebuggerTlsData *tls, gboolean f
 			}
 		}
 
-		if (i >= tls->frame_count)
-			f->id = mono_atomic_inc_i32 (&frame_id);
+                f->id = findex;
 #else //keep the same behavior that we have for wasm before start using debugger-agent
 		f->id = findex+1;
 #endif
@@ -3821,6 +4073,8 @@ runtime_initialized (MonoProfiler *prof)
 	process_profiler_event (EVENT_KIND_VM_START, mono_thread_current ());
 	if (CHECK_PROTOCOL_VERSION (2, 59))
 		process_profiler_event (EVENT_KIND_ASSEMBLY_LOAD, (mono_get_corlib ()->assembly));
+	MonoInternalThread *thread = mono_thread_internal_current ();
+		process_profiler_event (EVENT_KIND_THREAD_START, thread);
 	if (agent_config.defer) {
 		ERROR_DECL (error);
 		start_debugger_thread_func (error);
@@ -5119,7 +5373,6 @@ buffer_add_value_full (Buffer *buf, MonoType *t, void *addr, MonoDomain *domain,
 		buffer_add_fixed_array(buf, t, addr, domain, as_vtype, parent_vtypes, len_fixed_array);
 		return;
 	}
-
 	switch (t->type) {
 	case MONO_TYPE_VOID:
 		buffer_add_byte (buf, t->type);
@@ -5190,7 +5443,7 @@ buffer_add_value_full (Buffer *buf, MonoType *t, void *addr, MonoDomain *domain,
 			}
 			buffer_add_objid (buf, obj);
 			if (CHECK_ICORDBG (TRUE))
-				buffer_add_long (buf, (gssize) obj);
+			        buffer_add_long (buf, (gssize) obj);
 		}
 		break;
 	handle_vtype:
@@ -5936,6 +6189,40 @@ decode_value (MonoType *t, MonoDomain *domain, gpointer void_addr, gpointer void
 	return decode_value_internal (t, type, domain, addr, buf, endbuf, limit, check_field_datatype, extra_space, from_by_ref_value_type);
 }
 
+static int GetSize( MonoType *t)
+{
+	switch(t->type){
+	case MONO_TYPE_BOOLEAN:
+	case MONO_TYPE_I1:
+	case MONO_TYPE_U1:
+		return 0;
+	case MONO_TYPE_CHAR:
+	case MONO_TYPE_I2:
+	case MONO_TYPE_U2:
+		return 1;
+	case MONO_TYPE_I4:
+	case MONO_TYPE_U4:
+	case MONO_TYPE_R4:
+	case MONO_TYPE_VALUETYPE:
+		return 4;
+	case MONO_TYPE_I8:
+	case MONO_TYPE_U8:
+	case MONO_TYPE_R8:
+		return 0;
+	case MONO_TYPE_I:
+	case MONO_TYPE_U:
+		return 0;
+	case MONO_TYPE_PTR:
+	case MONO_TYPE_FNPTR:
+		return 0;
+	case MONO_TYPE_TYPEDBYREF:
+		return 0;
+	case MONO_TYPE_GENERICINST:
+		return 0;
+	default:
+		return 8;
+	}
+}
 static void
 add_var (Buffer *buf, MonoDebugMethodJitInfo *jit, MonoType *t, MonoDebugVarInfo *var, MonoContext *ctx, MonoDomain *domain, gboolean as_vtype)
 {
@@ -5949,6 +6236,8 @@ add_var (Buffer *buf, MonoDebugMethodJitInfo *jit, MonoType *t, MonoDebugVarInfo
 	switch (flags) {
 	case MONO_DEBUG_VAR_ADDRESS_MODE_REGISTER:
 		addr = (guint8 *)mono_arch_context_get_int_reg_address (ctx, reg);
+		//TODO : Add platform specific chek here to take care of endianness?
+		addr = addr + ( 8 - GetSize(t) );
 		buffer_add_value_full (buf, t, addr, domain, as_vtype, NULL, 1);
 		break;
 	case MONO_DEBUG_VAR_ADDRESS_MODE_REGOFFSET:
@@ -6442,6 +6731,8 @@ mono_do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, gu
 		return ERR_INVALID_ARGUMENT;
 
 	nargs = decode_int (p, &p, end);
+	if(sig->hasthis)
+               nargs--;
 	if (nargs != sig->param_count)
 		return ERR_INVALID_ARGUMENT;
 	/* Use alloca to get gc tracking */
@@ -7164,13 +7455,17 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 		wait_for_suspend ();
 		break;
 	case CMD_VM_RESUME:
-		#ifndef HOST_WASI	
-		if (suspend_count == 0) {
-			if (agent_config.defer && !agent_config.suspend)
-				// Workaround for issue in debugger-libs when running in defer attach mode.
-				break;
-			else
-				return ERR_NOT_SUSPENDED;
+#ifndef HOST_WASI
+                if (agent_config.defer && !agent_config.suspend) {
+#if defined (HOST_S390X)
+                if (suspend_count == 1)
+#else
+                if (suspend_count == 0)
+#endif
+		    // Workaround for issue in debugger-libs when running in defer attach mode.
+                    break;
+		else
+		    return ERR_NOT_SUSPENDED;
 		}
 #endif
 		resume_vm ();
@@ -7464,10 +7759,10 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 	case MDBGPROT_CMD_VM_READ_MEMORY: {
 		guint8* memory = (guint8*)GINT_TO_POINTER (decode_long (p, &p, end));
 		int size = decode_int (p, &p, end);
-		if (!valid_memory_address(memory, size))
+		if (!valid_memory_address(&memory, size))
 			return ERR_INVALID_ARGUMENT;		
 		PRINT_DEBUG_MSG (1, "MDBGPROT_CMD_VM_READ_MEMORY - [%p] - size - %d\n", memory, size);
-		buffer_add_byte_array (buf, memory, size);
+		buffer_add_byte_array (buf, (uint8_t *)&memory, size);
 		break;
 	}
 	case MDBGPROT_CMD_VM_GET_OBJECT_ID_BY_ADDRESS: {
@@ -8500,8 +8795,6 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		// FIXME: byref
 
 		MonoTypeNameFormat format = MONO_TYPE_NAME_FORMAT_FULL_NAME;
-		if (CHECK_PROTOCOL_VERSION(2, 61))
-			format = (MonoTypeNameFormat) decode_int (p, &p, end);
 		name = mono_type_get_name_full (m_class_get_byval_arg (klass), format);
 		buffer_add_string (buf, name);
 		g_free (name);
@@ -8628,8 +8921,6 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 			buffer_add_string (buf, f->name);
 			buffer_add_typeid (buf, domain, mono_class_from_mono_type_internal (f->type));
 			buffer_add_int (buf, f->type->attrs);
-			if (CHECK_PROTOCOL_VERSION(2, 61))
-				buffer_add_int(buf, mono_class_field_is_special_static(f));
 			i ++;
 		}
 		g_assert (i == nfields);
@@ -8725,14 +9016,15 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 	case MDBGPROT_CMD_TYPE_GET_VALUES_BY_FIELD_TOKEN: {
 		MonoThread *thread_obj;
 		MonoInternalThread *thread = NULL;
-		int field_token =  decode_int (p, &p, end);
-		int objid = decode_objid (p, &p, end);
+		int objid = decode_objid (p, &p, end); //At the send side, debugger id is added to buffer
+						       //followed by field token
 		if (objid != -1)
 		{
 			err = get_object (objid, (MonoObject**)&thread_obj);
 			if (err != ERR_NONE)
 				thread = THREAD_TO_INTERNAL (thread_obj);
 		}
+		int field_token =  decode_int (p, &p, end);
 
 		f = NULL;
 		gpointer iter = NULL;
@@ -9824,7 +10116,7 @@ thread_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 
 		if (start_frame < tls->frame_count)
 		{
-			m_dbgprot_buffer_add_byte_array (buf, (uint8_t *) &tls->frames [start_frame]->frame_addr, sizeof(gpointer));
+			m_dbgprot_buffer_add_byte_array (buf, (uint8_t *) tls->frames [start_frame]->frame_addr, sizeof(gpointer));
 		}
 		break;
 	}
@@ -10017,14 +10309,14 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 {
 	int objid;
 	ErrorCode err;
-	MonoThread *thread_obj;
-	MonoInternalThread *thread;
+	MonoThread *thread_obj = NULL;
+	MonoInternalThread *thread = NULL;
 	int pos, i, len, frame_idx;
-	StackFrame *frame;
-	MonoDebugMethodJitInfo *jit;
-	MonoMethodSignature *sig;
+	StackFrame *frame = NULL;
+	MonoDebugMethodJitInfo *jit = NULL;
+	MonoMethodSignature *sig = NULL;
 	gssize id;
-	MonoMethodHeader *header;
+	MonoMethodHeader *header = NULL;
 	ERROR_DECL (error);
 
 	objid = decode_objid (p, &p, end);
@@ -10075,6 +10367,13 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		return ERR_ABSENT_INFORMATION;
 
 	switch (command) {
+        case MDBGPROT_CMD_STACK_FRAME_GET_LOCALS: {
+                //locals
+                header = mono_method_get_header_checked (frame->actual_method, error);
+                buffer_add_int (buf, header->num_locals);
+                mono_metadata_free_mh (header);
+                break;
+        }
 	case MDBGPROT_CMD_STACK_FRAME_GET_ARGUMENTS: {
 		buffer_add_int(buf, sig->hasthis ? sig->param_count + 1 : sig->param_count);
 		if (sig->hasthis)
@@ -10282,6 +10581,22 @@ array_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		return ERR_INVALID_OBJECT;
 
 	switch (command) {
+        case CMD_ARRAY_REF_GET_SIZE: {
+		MonoTypeEnum type = m_class_get_byval_arg (m_class_get_element_class (arr->obj.vtable->klass))->type;
+		buffer_add_byte(buf, type);
+		esize = mono_array_element_size (arr->obj.vtable->klass);
+		buffer_add_int (buf, esize);
+		if (!arr->bounds) {
+		    buffer_add_int (buf, arr->max_length);
+		    buffer_add_int (buf, 0);
+		} else {
+		    for (i = 0; i < m_class_get_rank (arr->obj.vtable->klass); ++i) {
+		        buffer_add_int (buf, arr->bounds [i].length);
+		        buffer_add_int (buf, arr->bounds [i].lower_bound);
+		    }
+		}
+		}
+		break;
 	case CMD_ARRAY_REF_GET_TYPE: {
 			MonoTypeEnum type = m_class_get_byval_arg (m_class_get_element_class (arr->obj.vtable->klass))->type;
 			buffer_add_byte(buf, type);
@@ -10495,7 +10810,9 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			}
 		}
 
-		while ((f = mono_class_get_fields_internal (k, &iter))) {
+		//Above for loop might end if 'k' is null , ensure 'k' is not
+		//null before passing it to mono_class_get_fields_internal to avoid crash
+		while ( k && (f = mono_class_get_fields_internal (k, &iter))) {
 			if (mono_class_get_field_token (f) == field_token) {
 				goto get_field_value;
 			}

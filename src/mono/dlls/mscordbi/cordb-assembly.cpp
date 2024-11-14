@@ -89,7 +89,7 @@ HRESULT CordbAssembly::GetName(ULONG32 cchName, ULONG32* pcchName, WCHAR szName[
             m_pAssemblyName = m_dbgprot_decode_string_with_len(pReply->p, &pReply->p, pReply->end, &m_nAssemblyNameLen);
 
             char* c_mobile_symbols_path = getenv("MOBILE_SYMBOLS_PATH");
-            if (strlen(c_mobile_symbols_path) > 0) {
+            if (c_mobile_symbols_path && strlen(c_mobile_symbols_path) > 0) {
 
                 size_t size_path = strlen(m_pAssemblyName);
                 size_t pos_separator = 0;
@@ -393,6 +393,7 @@ HRESULT CordbModule::GetMetaDataInterface(REFIID riid, IUnknown** ppObj)
         }
 
         m_pRegMeta->InitWithStgdb((ICorDebugModule*)this, m_pStgdbRW);
+	 m_pRegMeta->AddRef();
     }
     m_pRegMeta->QueryInterface(riid, (void**)ppObj);
     LOG((LF_CORDB, LL_INFO1000000, "CordbModule - GetMetaDataInterface - IMPLEMENTED\n"));

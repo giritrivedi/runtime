@@ -65,6 +65,25 @@ int Socket::OpenSocketAcceptConnection(const char *address, const char *port) {
     if (iResult != 0) {
         return -1;
     }
+    bool is_server = false;
+    char* env_var = getenv("MONO_ENV_OPTIONS");
+    if(env_var)
+    {
+       char *arg = strtok(env_var, ",");
+       while (arg != NULL)
+       {
+            if (strncmp (arg, "server=", 7) == 0 && !strcmp (arg + 7, "n"))
+            {
+                is_server = true;
+                break;
+            }
+            else
+            {
+                is_server = false;
+            }
+            arg = strtok(NULL, ",");
+       }
+    }
 
     // Attempt to connect to an address until one succeeds
     for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
@@ -76,23 +95,35 @@ int Socket::OpenSocketAcceptConnection(const char *address, const char *port) {
             return -1;
         }
 
-        int flag = 1;
-        if (setsockopt(socketId, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof(int)))
-            continue;
+        if(!is_server)
+        {
+            iResult = connect (socketId,ptr->ai_addr, ptr->ai_addrlen);
+            if (iResult == SOCKET_ERROR)
+                continue;
+        }
+        else
+        {
+            int flag = 1;
+            if (setsockopt(socketId, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof(int)))
+                continue;
 
-        iResult = bind(socketId, ptr->ai_addr, (int)ptr->ai_addrlen);
-        if (iResult == SOCKET_ERROR)
-            continue;
+            iResult = bind(socketId, ptr->ai_addr, (int)ptr->ai_addrlen);
+            if (iResult == SOCKET_ERROR)
+                continue;
 
-        iResult = listen(socketId, 16);
-        if (iResult == SOCKET_ERROR)
-            continue;
+            iResult = listen(socketId, 16);
+            if (iResult == SOCKET_ERROR)
+                continue;
+        }
 
         break;
     }
 
-    if (iResult != SOCKET_ERROR)
-        socketId = accept(socketId, NULL, NULL);
+    if (is_server)
+    {
+        if (iResult != SOCKET_ERROR)
+            socketId = accept(socketId, NULL, NULL);
+    }
 
     freeaddrinfo(result);
 

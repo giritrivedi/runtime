@@ -9,6 +9,7 @@
 #include <cordb.h>
 
 using namespace std;
+#define wcscpy        PAL_wcscpy
 
 CordbAppDomain::CordbAppDomain(Connection* conn, CordbProcess* ppProcess) : CordbBaseMono(conn)
 {

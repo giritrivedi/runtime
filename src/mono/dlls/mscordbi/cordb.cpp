@@ -245,18 +245,12 @@ void Connection::Receive()
 
         int iResult = m_socket->Receive((char*)recvbuf_header.buf, HEADER_LENGTH);
 
-        if (iResult == -1)
+	// This change is to avoid the debugger hung . Once the iResutl is zero, it means that other side is closed and doesnt exist
+        if (iResult == -1 || iResult == 0)
         {
             m_dbgprot_buffer_free(&recvbuf_header);
             m_pCordb->GetCallback()->ExitProcess(static_cast<ICorDebugProcess*>(GetProcess()));
             break;
-        }
-        while (iResult == 0)
-        {
-            LOG((LF_CORDB, LL_INFO100000, "transport_recv () sleep returned %d, expected %d.\n", iResult,
-                 HEADER_LENGTH));
-            iResult = m_socket->Receive((char*)recvbuf_header.buf, HEADER_LENGTH);
-            Sleep(1000);
         }
 
         MdbgProtHeader  header;
@@ -338,6 +332,14 @@ void Connection::ProcessPacketInternal(MdbgProtBuffer* recvbuf)
         {
             case MDBGPROT_EVENT_KIND_VM_START:
             {
+
+                if (pCorDebugAppDomain == NULL)
+                {
+                    pCorDebugAppDomain = new CordbAppDomain(this, GetProcess());
+                    GetProcess()->Stop(false);
+                    m_pCordb->GetCallback()->CreateAppDomain(static_cast<ICorDebugProcess*>(GetProcess()),
+                                                             pCorDebugAppDomain);
+                }
                 m_pCordb->GetCallback()->CreateProcess(static_cast<ICorDebugProcess*>(GetProcess()));
             }
             break;
@@ -416,7 +418,6 @@ void Connection::ProcessPacketInternal(MdbgProtBuffer* recvbuf)
             }
         }
     }
-    // m_dbgprot_buffer_free(&recvbuf);
 }
 
 int Connection::ProcessPacket(bool is_answer)
@@ -565,7 +566,22 @@ int Connection::SendEvent(int cmd_set, int cmd, MdbgProtBuffer* sendbuf)
     return ret;
 }
 
-MONO_API HRESULT CoreCLRCreateCordbObject(int iDebuggerVersion, DWORD pid, HMODULE hmodTargetCLR, void** ppCordb)
+MONO_API DLLEXPORT HRESULT CoreCLRCreateCordbObject3(int iDebuggerVersion, DWORD pid, LPCWSTR lpApplicationGroupId, LPCWSTR dacModulePath, HMODULE hmodTargetCLR,void** ppCordb)
+{
+    if (ppCordb == NULL )
+    {
+	return E_INVALIDARG;
+    }
+    if ((iDebuggerVersion < CorDebugVersion_2_0) ||
+        (iDebuggerVersion > CorDebugLatestVersion))
+    {
+        return E_INVALIDARG;
+    }
+    *ppCordb = new Cordb(pid);
+    return S_OK;
+}
+
+MONO_API DLLEXPORT HRESULT CoreCLRCreateCordbObject(int iDebuggerVersion, DWORD pid, HMODULE hmodTargetCLR, void** ppCordb)
 {
     *ppCordb = new Cordb(pid);
     return S_OK;

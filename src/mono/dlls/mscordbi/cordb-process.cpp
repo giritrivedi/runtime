@@ -278,8 +278,14 @@ HRESULT CordbProcess::GetHandle(HPROCESS* phProcessHandle)
 
 HRESULT CordbProcess::GetThread(DWORD dwThreadId, ICorDebugThread** ppThread)
 {
-    LOG((LF_CORDB, LL_INFO100000, "CordbProcess - GetThread - NOT IMPLEMENTED\n"));
-    return S_OK;
+    HRESULT hr = S_OK;
+    CordbThread* thread    = FindThread(dwThreadId);
+    if (thread == NULL)
+        hr = E_INVALIDARG;
+    *ppThread = thread;
+    thread->AddRef();
+
+    return hr;
 }
 
 HRESULT CordbProcess::EnumerateObjects(ICorDebugObjectEnum** ppObjects)
@@ -525,6 +531,12 @@ HRESULT CordbProcess::HasQueuedCallbacks(ICorDebugThread* pThread, BOOL* pbQueue
 {
     // conn->process_packet_from_queue();
     *pbQueued = false;
+    dbg_lock();
+    if (m_pThreads->GetCount() == 0)
+    {
+       *pbQueued = true;
+    }
+    dbg_unlock();
     LOG((LF_CORDB, LL_INFO1000000, "CordbProcess - HasQueuedCallbacks - IMPLEMENTED\n"));
     return S_OK;
 }
@@ -693,7 +705,7 @@ CordbType* CordbProcess::FindOrAddArrayType(CorElementType type, CordbType* arra
         arrayType->GetClass(&eleClass);
         eleClass->GetToken(&eleToken);
     }
-    hash = (long)(pow(2, eleToken & 0xffffff) * pow(3, type) * pow(5, eleType)); //TODO: define a better hash
+    hash = (long)(pow(2, eleToken & 0xffffff) * pow(3, (long)type) * pow(5, (long)eleType)); //TODO: define a better hash
     if (!typeMap->Lookup(hash, &ret)) {
         ret = new CordbType(type, conn, NULL, arrayType);
         typeMap->Add(hash, ret);

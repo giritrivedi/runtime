@@ -238,7 +238,13 @@ HRESULT STDMETHODCALLTYPE CordbJITILFrame::RemapFunction(ULONG32 newILOffset)
 
 HRESULT STDMETHODCALLTYPE CordbJITILFrame::EnumerateTypeParameters(ICorDebugTypeEnum** ppTyParEnum)
 {
-    LOG((LF_CORDB, LL_INFO100000, "CordbFrame - EnumerateTypeParameters - NOT IMPLEMENTED\n"));
+
+    CordbTypeEnum* pTypeEnum = new CordbTypeEnum(conn, NULL);
+    if (pTypeEnum == NULL)
+	return S_OK;
+
+    pTypeEnum->InternalAddRef();
+    pTypeEnum->QueryInterface(IID_ICorDebugTypeEnum, (void**)ppTyParEnum);
     return S_OK;
 }
 
@@ -293,7 +299,7 @@ HRESULT STDMETHODCALLTYPE CordbJITILFrame::SetIP(ULONG32 nOffset)
 HRESULT STDMETHODCALLTYPE CordbJITILFrame::EnumerateLocalVariables(ICorDebugValueEnum** ppValueEnum)
 {
     LOG((LF_CORDB, LL_INFO100000, "CordbFrame - EnumerateLocalVariables - IMPLEMENTED\n"));
-    CordbValueEnum *pCordbValueEnum = new CordbValueEnum(conn, m_pThread->GetThreadId(), false, m_debuggerFrameId);
+    CordbValueEnum *pCordbValueEnum = new CordbValueEnum(conn, m_pThread->GetThreadId(), m_debuggerFrameId, false);
     return pCordbValueEnum->QueryInterface(IID_ICorDebugValueEnum, (void**)ppValueEnum);
 }
 
@@ -315,6 +321,7 @@ HRESULT STDMETHODCALLTYPE CordbJITILFrame::GetLocalVariable(DWORD dwIndex, ICorD
         ReceivedReplyPacket* received_reply_packet = conn->GetReplyWithError(cmdId);
         CHECK_ERROR_RETURN_FALSE(received_reply_packet);
         MdbgProtBuffer* pReply = received_reply_packet->Buffer();
+        uint8_t byref = m_dbgprot_decode_byte(pReply->p, &pReply->p, pReply->end);
         hr = CordbObjectValue::CreateCordbValue(conn, pReply, ppValue);
     }
     EX_CATCH_HRESULT(hr);

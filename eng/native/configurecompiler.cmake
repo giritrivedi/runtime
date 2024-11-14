@@ -9,7 +9,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/configuretools.cmake)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CheckCCompilerFlag)
@@ -519,6 +519,7 @@ endif ()
 if (CLR_CMAKE_HOST_UNIX)
   # Disable frame pointer optimizations so profilers can get better call stacks
   add_compile_options(-fno-omit-frame-pointer)
+  add_compile_options(-fms-extensions)
 
   # The -fms-extensions enable the stuff like __if_exists, __declspec(uuid()), etc.
   add_compile_options(-fms-extensions)
@@ -1032,3 +1033,5 @@ elseif (NOT CLR_CMAKE_HOST_BROWSER AND NOT CLR_CMAKE_HOST_WASI)
     enable_language(ASM)
 
 endif(CLR_CMAKE_HOST_WIN32)
+#TODO revisit below addition
+add_compile_options(-D_MIDL_USE_GUIDDEF_)

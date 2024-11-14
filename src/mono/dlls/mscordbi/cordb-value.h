@@ -19,6 +19,17 @@ union CordbContent
     CORDB_ADDRESS   pointerValue;
 };
 
+typedef struct valueType
+{
+   CorElementType type;
+   CordbContent   value;
+   int field_token;
+   int object_id;
+   int nfields;
+   CORDB_ADDRESS address;
+   ICorDebugValue *pValue;
+}CordbValueTypeContent;
+
 class CordbValue : public CordbBaseMono, public ICorDebugValue2, public ICorDebugValue3, public ICorDebugGenericValue
 {
     CorElementType m_type;
@@ -78,6 +89,10 @@ public:
     const char* GetClassName()
     {
         return "CordbReferenceValue";
+    }
+    int GetDebuggerId() const
+    {
+           return m_debuggerId;
     }
     ~CordbReferenceValue();
     HRESULT STDMETHODCALLTYPE GetType(CorElementType* pType);
@@ -251,7 +266,8 @@ class CordbValueEnum : public CordbBaseMono,
     long m_nThreadDebuggerId;
     long m_nFrameDebuggerId;
     int  m_nCurrentValuePos;
-    int  m_nCount;
+    int  m_nParamCount;
+    int  m_nLocalCount;
     ILCodeKind m_nFlags;
     bool m_bIsArgument;
     ICorDebugValue** m_pValues;
@@ -278,5 +294,59 @@ public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 };
 
+class CordbVCObjectValue: public CordbBaseMono,
+                          public ICorDebugValue2,
+                          public ICorDebugObjectValue,
+                          public ICorDebugGenericValue
+{
+    CorElementType m_type;
+    CordbValueTypeContent *m_value;
+    CordbClass*    m_pClass;
+    CordbType*     m_pCordbType;
+    CORDB_ADDRESS  m_pAddress;
+    int            m_nfields;
+    int            m_size;
+    int            m_debuggerId;
+
+    public:
+    CordbVCObjectValue(Connection* conn, CorElementType type, CordbValueTypeContent *value, int nfields, CORDB_ADDRESS  m_pAddress, int size, CordbClass *klass);
+    ULONG STDMETHODCALLTYPE AddRef(void)
+    {
+        return (BaseAddRef());
+    }
+    ULONG STDMETHODCALLTYPE Release(void)
+    {
+        return (BaseRelease());
+    }
+    const char* GetClassName()
+    {
+        return "CordbVCObjectValue";
+    }
+    int GetDebuggerId() const
+    {
+        return m_debuggerId;
+    }
+    ~CordbVCObjectValue();
+
+    HRESULT STDMETHODCALLTYPE GetClass(ICorDebugClass** ppClass);
+    HRESULT STDMETHODCALLTYPE GetFieldValue(ICorDebugClass* pClass, mdFieldDef fieldDef, ICorDebugValue** ppValue);
+    HRESULT STDMETHODCALLTYPE GetType(CorElementType* pType);
+    HRESULT STDMETHODCALLTYPE GetSize(ULONG32* pSize);
+    HRESULT STDMETHODCALLTYPE GetAddress(CORDB_ADDRESS* pAddress);
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    HRESULT STDMETHODCALLTYPE GetValue(void* pTo);
+    HRESULT STDMETHODCALLTYPE SetValue(void* pFrom);
+    HRESULT STDMETHODCALLTYPE GetLength(ULONG32* pcchString);
+    HRESULT STDMETHODCALLTYPE GetString(ULONG32 cchString, ULONG32* pcchString, WCHAR szString[]);
+    HRESULT STDMETHODCALLTYPE GetExactType(ICorDebugType** ppType);
+    HRESULT STDMETHODCALLTYPE GetRank(ULONG32* pnRank);
+    HRESULT STDMETHODCALLTYPE CreateBreakpoint(ICorDebugValueBreakpoint** ppBreakpoint);
+    HRESULT STDMETHODCALLTYPE GetVirtualMethod(mdMemberRef memberRef, ICorDebugFunction** ppFunction);
+    HRESULT STDMETHODCALLTYPE GetVirtualMethodAndType(mdMemberRef memberRef, ICorDebugFunction** ppFunction, ICorDebugType** ppType);
+    HRESULT STDMETHODCALLTYPE IsValueClass(BOOL* pbIsValueClass);
+    HRESULT STDMETHODCALLTYPE GetContext(ICorDebugContext** ppContext);
+    HRESULT STDMETHODCALLTYPE SetFromManagedCopy(IUnknown* pObject);
+    HRESULT STDMETHODCALLTYPE GetManagedCopy(IUnknown** ppObject);
+};
 
 #endif

@@ -17,6 +17,7 @@
 #define _SAFECRT_IMPL
 #define _SECURE_SCANF
 
+#include <minipal/utils.h>
 #include "pal/palinternal.h"
 #include <string.h>
 #include <errno.h>
@@ -29,7 +30,6 @@
 #include "internal_securecrt.h"
 
 #include "mbusafecrt_internal.h"
-
 #define _TCHAR CRT_TCHAR
 #define TCHAR CRTTCHAR
 

@@ -49,7 +49,8 @@ HRESULT STDMETHODCALLTYPE CordbType::GetClass(ICorDebugClass** ppClass)
     if (!m_pClass)
     {
         LOG((LF_CORDB, LL_INFO100000, "CordbType - GetClass - NO CLASS\n"));
-        return S_OK;
+	*ppClass = NULL;
+        return CORDBG_E_CLASS_NOT_LOADED;
     }
     m_pClass->QueryInterface(IID_ICorDebugClass, (void**)ppClass);
     return S_OK;
@@ -139,6 +140,8 @@ HRESULT STDMETHODCALLTYPE CordbTypeEnum::Next(ULONG celt, ICorDebugType* values[
         m_pType->QueryInterface(IID_ICorDebugType, (void**)&values[0]);
         *pceltFetched = celt;
     }
+    else
+        *pceltFetched = 0;
     LOG((LF_CORDB, LL_INFO1000000, "CordbTypeEnum - Next - IMPLEMENTED\n"));
     return S_OK;
 }

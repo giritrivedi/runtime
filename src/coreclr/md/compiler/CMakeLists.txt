@@ -60,7 +60,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     list(APPEND MDCOMPILER_SOURCES ${MDCOMPILER_HEADERS})
     list(APPEND MDCOMPILER_WKS_SOURCES ${MDCOMPILER_WKS_HEADERS})
 endif()
-
+include_directories(${CLR_DIR}/minipal)
 add_library_clr(mdcompiler_dac ${MDCOMPILER_SOURCES})
 set_target_properties(mdcompiler_dac PROPERTIES DAC_COMPONENT TRUE)
 target_precompile_headers(mdcompiler_dac PRIVATE stdafx.h)
