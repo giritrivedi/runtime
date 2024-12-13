@@ -1,4 +1,5 @@
 project(mscordbi)
+include(clrdefinitions.cmake)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -8,11 +9,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CLR_CMAKE_RUNTIME_MONO 1)
 set(CLR_DIR ${CLR_REPO_ROOT_DIR}/src/coreclr)
+set(NATIVE_SRC_DIR ${CLR_REPO_ROOT_DIR}/src/native)
 set(CMAKE_OSX_ARCHITECTURES ${CMAKE_SYSTEM_PROCESSOR})
 set(CMAKE_EXE_LINKER_FLAGS_CHECKED "")
 set(CMAKE_SHARED_LINKER_FLAGS_CHECKED "")
 set(CLR_CMAKE_HOST_ARCH ${CMAKE_GENERATOR_PLATFORM})
 set(FEATURE_EVENT_TRACE 0)
+if(CLR_CMAKE_TARGET_ARCH_S390X STREQUAL "s390x")
+  set(TARGET_S390X 1)
+endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_definitions(-fvisibility-global-new-delete-hidden)
 endif()
@@ -31,6 +36,8 @@ endif()
 
 add_definitions(-DDBI_COMPONENT_MONO)
 
+
+message ("it comes here")
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../..
   ${PROJECT_SOURCE_DIR}/../../
@@ -83,6 +90,20 @@ set(mscorbi_sources_base
     cordb-value.h
 )
 
+# Adds prefix to paths list
+function(addprefix var prefix list)
+  set(f)
+  foreach(i ${list})
+    set(f ${f} ${prefix}/${i})
+  endforeach()
+  set(${var} ${f} PARENT_SCOPE)
+endfunction()
+function(append value)
+  foreach(variable ${ARGN})
+    set(${variable} "${${variable}} ${value}" PARENT_SCOPE)
+  endforeach(variable)
+endfunction()
+
 addprefix(mscorbi_sources ../mscordbi/ "${mscorbi_sources_base}")
 
 if(HOST_DARWIN)
@@ -95,9 +116,10 @@ set(mscorbi_sources "${mscorbi_sources};${VERSION_FILE_RC_PATH}") # this is gene
 endif()
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/socket-dbi)
-add_subdirectory(${CLR_DIR}/minipal minipal)
+#add_subdirectory(${CLR_DIR}/minipal minipal)
 
-include(${CLR_ENG_NATIVE_DIR}/configurecompiler.cmake)
+#include(${CLR_ENG_NATIVE_DIR}/configurecompiler.cmake)
+include(${CLR_DIR}/clrdefinitions.cmake)
 
 if (CLR_CMAKE_HOST_UNIX)
   # Add custom targets that the pal build expects.
@@ -108,7 +130,7 @@ if (CLR_CMAKE_HOST_UNIX)
   include_directories(${CLR_DIR}/pal/src/safecrt)
 
   append("-Wno-missing-prototypes  -Wno-pointer-arith -Wno-macro-redefined" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
-  add_subdirectory(${CLR_DIR}/pal pal)
+  #add_subdirectory(${CLR_DIR}/pal pal)
 
   include_directories(${CLR_DIR}/pal/inc/rt/cpp)
 endif (CLR_CMAKE_HOST_UNIX)
@@ -117,20 +139,56 @@ if (CLR_CMAKE_HOST_UNIX)
     add_subdirectory(${CLR_DIR}/nativeresources nativeresources)
 endif()
 
-add_subdirectory(${CLR_DIR}/md/runtime md/runtime)
-add_subdirectory(${CLR_DIR}/md/compiler md/compiler)
+#add_subdirectory(${CLR_DIR}/md/runtime md/runtime)
+#add_subdirectory(${CLR_DIR}/md/compiler md/compiler)
 
 include(${CLR_DIR}/clrdefinitions.cmake)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../inc/)
 include_directories(${CLR_DIR}/minipal)
 
-add_subdirectory(${CLR_DIR}/md/enc md/enc)
-add_subdirectory(${CLR_DIR}/utilcode utilcode)
+#add_subdirectory(${CLR_DIR}/md/enc md/enc)
+#add_subdirectory(${CLR_DIR}/utilcode utilcode)
 if (CLR_CMAKE_HOST_UNIX)
     add_subdirectory(${CLR_DIR}/palrt palrt)
     append("-Wno-strict-prototypes -Wno-deprecated -Wno-pointer-arith" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
 endif (CLR_CMAKE_HOST_UNIX)
+# Build corguids static library from coreclr source files
+if (NOT WIN32)
+    add_compile_options(-Wno-extra-tokens)
+    add_compile_options(-fms-extensions)
+endif()
+add_compile_options(-D_MIDL_USE_GUIDDEF_)
+#add_compile_options(-fms-extensions )
+file(GLOB CORGUIDS_SOURCES "${CLR_DIR}/pal/prebuilt/idl/*_i.cpp")
+add_library(corguids STATIC ${CORGUIDS_SOURCES})
+if (NOT WIN32)
+	message ("It comes in not wind32 condition") 
+    target_compile_options(corguids PRIVATE -Wno-unused-parameter)
+    target_include_directories(corguids PRIVATE ${CLR_DIR}/pal/inc ${CLR_DIR}/pal/inc/rt)
+    target_include_directories(corguids PRIVATE ${CLR_DIR}/inc ${CLR_DIR}/debug/inc)
+endif()
+
+# Include coreclr headers
+
+if (NOT WIN32)
+    include_directories(${CLR_DIR}/pal/prebuilt/inc)
+    message("Current source dir = ${CMAKE_CURRENT_SOURCE_DIR}")
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/coreclr)
+endif()
+include_directories(${CLR_DIR})
+
+# for CoreCLR <= 3.x
+include_directories(${CLR_DIR}/coreclr/hosts/inc)
+# for dotnet-runtime (> 3.x)
+include_directories(${CLR_DIR}/hosts/inc)
+# for dotnet-runtime (> 8.x)
+message ("native directory = ${NATIVE_SRC_DIR}")
+include_directories(${NATIVE_SRC_DIR})
+include_directories(${NATIVE_SRC_DIR}/public)
+include_directories(${NATIVE_SRC_DIR}/minipal)
+message("rt direcotry is = ${CLR_DIR}/pal/inc/rt ")
+include_directories(${CLR_DIR}/pal/inc/rt)
 
 add_library(mscordbi SHARED "${mscorbi_sources};${PROJECT_SOURCE_DIR}/../../mono/component/debugger-protocol.c;${PROJECT_SOURCE_DIR}/../../../coreclr/pal/prebuilt/idl/xcordebug_i.cpp;${PROJECT_SOURCE_DIR}/../../../coreclr/pal/prebuilt/idl/cordebug_i.cpp")
 
@@ -144,11 +202,11 @@ set(END_WHOLE_ARCHIVE -Wl,--no-whole-archive)
 # order dependent and changing the order can result in undefined symbols in the shared
 # library.
 set(COREDBI_LIBRARIES
-    mdruntimerw-dbi
-    utilcodestaticnohost
-    mdruntime-dbi
-    mdcompiler-dbi
-    socket-dbi
+	#mdruntimerw-dbi
+	#utilcodestaticnohost
+	#mdruntime-dbi
+	#mdcompiler-dbi
+	socket-dbi
     ${OS_LIBS}
 )
 if(CLR_CMAKE_HOST_UNIX)
@@ -162,5 +220,121 @@ if(CLR_CMAKE_HOST_UNIX)
     )
 endif()
 
-target_link_libraries(mscordbi PRIVATE ${COREDBI_LIBRARIES} monoapi)
+
+
+message ("It comes here too")
+function (get_symbol_file_name targetName outputSymbolFilename)
+  if (CLR_CMAKE_HOST_UNIX)
+    if (CLR_CMAKE_TARGET_APPLE)
+      if (CLR_CMAKE_APPLE_DSYM)
+        set(strip_destination_file $<TARGET_FILE:${targetName}>.dSYM)
+      else ()
+        set(strip_destination_file $<TARGET_FILE:${targetName}>.dwarf)
+      endif ()
+    else ()
+      set(strip_destination_file $<TARGET_FILE:${targetName}>.dbg)
+    endif ()
+
+    set(${outputSymbolFilename} ${strip_destination_file} PARENT_SCOPE)
+  elseif(CLR_CMAKE_HOST_WIN32)
+    # We can't use the $<TARGET_PDB_FILE> generator expression here since
+    # the generator expression isn't supported on resource DLLs.
+    set(${outputSymbolFilename} $<TARGET_FILE_DIR:${targetName}>/$<TARGET_FILE_PREFIX:${targetName}>$<TARGET_FILE_BASE_NAME:${targetName}>.pdb PARENT_SCOPE)
+  endif()
+endfunction()
+
+function(strip_symbols targetName outputFilename)
+  get_symbol_file_name(${targetName} strip_destination_file)
+  set(${outputFilename} ${strip_destination_file} PARENT_SCOPE)
+  if (CLR_CMAKE_HOST_UNIX)
+    set(strip_source_file $<TARGET_FILE:${targetName}>)
+
+    if (CLR_CMAKE_TARGET_APPLE)
+
+      # Ensure that dsymutil and strip are present
+      find_program(DSYMUTIL dsymutil)
+      if (DSYMUTIL STREQUAL "DSYMUTIL-NOTFOUND")
+        message(FATAL_ERROR "dsymutil not found")
+      endif()
+
+      find_program(STRIP strip)
+      if (STRIP STREQUAL "STRIP-NOTFOUND")
+        message(FATAL_ERROR "strip not found")
+      endif()
+
+      set(strip_command ${STRIP} -no_code_signature_warning -S ${strip_source_file})
+
+      if (CLR_CMAKE_TARGET_OSX)
+        # codesign release build
+        string(TOLOWER "${CMAKE_BUILD_TYPE}" LOWERCASE_CMAKE_BUILD_TYPE)
+        if (LOWERCASE_CMAKE_BUILD_TYPE STREQUAL release)
+          set(strip_command ${strip_command} && codesign -f -s - ${strip_source_file})
+        endif ()
+      endif ()
+
+      execute_process(
+        COMMAND ${DSYMUTIL} --help
+        OUTPUT_VARIABLE DSYMUTIL_HELP_OUTPUT
+      )
+
+      if (NOT CLR_CMAKE_APPLE_DSYM)
+        set(DSYMUTIL_OPTS "--flat")
+      endif ()
+      if ("${DSYMUTIL_HELP_OUTPUT}" MATCHES "--minimize")
+        list(APPEND DSYMUTIL_OPTS "--minimize")
+      endif ()
+
+      add_custom_command(
+        TARGET ${targetName}
+        POST_BUILD
+        VERBATIM
+        COMMAND sh -c "echo Stripping symbols from $(basename '${strip_source_file}') into $(basename '${strip_destination_file}')"
+        COMMAND ${DSYMUTIL} ${DSYMUTIL_OPTS} ${strip_source_file}
+        COMMAND ${strip_command}
+        )
+    else (CLR_CMAKE_TARGET_APPLE)
+
+      add_custom_command(
+        TARGET ${targetName}
+        POST_BUILD
+        VERBATIM
+        COMMAND sh -c "echo Stripping symbols from $(basename '${strip_source_file}') into $(basename '${strip_destination_file}')"
+        COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${strip_source_file} ${strip_destination_file}
+        COMMAND ${CMAKE_OBJCOPY} --strip-debug --strip-unneeded ${strip_source_file}
+        COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=${strip_destination_file} ${strip_source_file}
+        )
+    endif (CLR_CMAKE_TARGET_APPLE)
+  endif(CLR_CMAKE_HOST_UNIX)
+endfunction()
+
+function(install_with_stripped_symbols targetName kind destination)
+    get_property(target_is_framework TARGET ${targetName} PROPERTY "FRAMEWORK")
+    if(NOT CLR_CMAKE_KEEP_NATIVE_SYMBOLS)
+      strip_symbols(${targetName} symbol_file)
+      if (NOT "${symbol_file}" STREQUAL "" AND NOT target_is_framework)
+        install_symbol_file(${symbol_file} ${destination} ${ARGN})
+      endif()
+    endif()
+
+    if (target_is_framework)
+      install(TARGETS ${targetName} FRAMEWORK DESTINATION ${destination} ${ARGN})
+    else()
+      if (CLR_CMAKE_TARGET_APPLE AND ("${kind}" STREQUAL "TARGETS"))
+        # We want to avoid the kind=TARGET install behaviors which corrupt code signatures on osx-arm64
+        set(kind PROGRAMS)
+      endif()
+
+      if ("${kind}" STREQUAL "TARGETS")
+        set(install_source ${targetName})
+      elseif("${kind}" STREQUAL "PROGRAMS")
+        set(install_source $<TARGET_FILE:${targetName}>)
+      else()
+        message(FATAL_ERROR "The `kind` argument has to be either TARGETS or PROGRAMS, ${kind} was provided instead")
+      endif()
+      install(${kind} ${install_source} DESTINATION ${destination} ${ARGN})
+    endif()
+endfunction()
+
+#target_link_libraries(mscordbi PRIVATE ${COREDBI_LIBRARIES} monoapi)
+target_link_libraries(mscordbi PRIVATE ${COREDBI_LIBRARIES} corguids) 
 install_with_stripped_symbols(mscordbi TARGETS lib)
