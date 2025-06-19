@@ -2921,7 +2921,7 @@ EvalLoop:
                 _ASSERTE(cit == CORINFO_TYPE_INT || cit == CORINFO_TYPE_UINT || cit == CORINFO_TYPE_NATIVEINT);
 #endif // _DEBUG
 #if defined(HOST_AMD64) || defined(HOST_S390X)
-                UINT32 val = (cit == CORINFO_TYPE_NATIVEINT) ? (INT32) OpStackGet<NativeInt>(m_curStackHt)
+                NativeUInt val = (cit == CORINFO_TYPE_NATIVEINT) ?  (NativeUInt) OpStackGet<NativeInt>(m_curStackHt)
                                                              : OpStackGet<INT32>(m_curStackHt);
 #else
                 UINT32 val = OpStackGet<INT32>(m_curStackHt);
@@ -10152,7 +10152,9 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
             if (sz > 8)
             {
                 void* srcPtr = OpStackGet<void*>(argsBase + arg);
-                args[curArgSlot] = PtrToArgSlot(srcPtr);
+                void *tmpPtr = (void*)_alloca(sz);
+                memmove(tmpPtr, srcPtr, sz);
+                args[curArgSlot] = PtrToArgSlot(tmpPtr);
                 if (!IsInLargeStructLocalArea(srcPtr))
                     largeStructSpaceToPop += sz;
             }
