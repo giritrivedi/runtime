@@ -5679,6 +5679,7 @@ void Interpreter::ConvOvf()
     case CORINFO_TYPE_DOUBLE:
          {
             double d = OpStackGet<double>(opidx);
+	    d = trunc(d);
             if (!DoubleFitsInIntType<TMin, TMax>(d))
             {
                 ThrowOverflowException();
