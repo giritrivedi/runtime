@@ -1177,6 +1177,10 @@ protected:
                     size = 2;
                     break;
                 case INS_lgfi:
+                case INS_msfi:
+                case INS_msgfi:
+                case INS_afi:
+                case INS_agfi:
                 case INS_stg:
                 case INS_lay:
                 case INS_ley:
@@ -1185,6 +1189,8 @@ protected:
                 case INS_stey:
                 case INS_stdy:
                 case INS_lmg:
+                case INS_xihf:
+                case INS_nihf:
                     size = 6;
                     break;
                 default:
