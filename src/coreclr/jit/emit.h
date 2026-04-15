@@ -991,17 +991,31 @@ protected:
 
             bool iiaHasInstrCount() const
             {
+#ifdef BIGENDIAN
+                int lowBits = *((int*)((char*)&iiaEncodedInstrCount + 4));
+                return (lowBits & iaut_MASK) == iaut_INST_COUNT;
+#else
                 return (iiaEncodedInstrCount & iaut_MASK) == iaut_INST_COUNT;
+#endif
             }
             int iiaGetInstrCount() const
             {
                 assert(iiaHasInstrCount());
-                return (iiaEncodedInstrCount >> iaut_SHIFT);
+#ifdef BIGENDIAN
+    		int lowBits = *((int*)((char*)&iiaEncodedInstrCount + 4));
+    		return (lowBits >> iaut_SHIFT);
+#else
+    		return (iiaEncodedInstrCount >> iaut_SHIFT);
+#endif
             }
             void iiaSetInstrCount(int count)
             {
                 assert(abs(count) < 10);
-                iiaEncodedInstrCount = (count << iaut_SHIFT) | iaut_INST_COUNT;
+#ifdef BIGENDIAN
+    		*((int*)((char*)&iiaEncodedInstrCount + 4)) = (count << iaut_SHIFT) | iaut_INST_COUNT;
+#else
+    		iiaEncodedInstrCount = (count << iaut_SHIFT) | iaut_INST_COUNT;
+#endif
             }
 
 #ifdef TARGET_ARM
@@ -1174,6 +1188,8 @@ protected:
                 case INS_ret:
                 case INS_br:
                 case INS_nop:
+                case INS_cr:
+		case INS_clr:
                     size = 2;
                     break;
                 case INS_lgfi:
@@ -1181,6 +1197,8 @@ protected:
                 case INS_msgfi:
                 case INS_afi:
                 case INS_agfi:
+                case INS_iihf:
+                case INS_iilf:
                 case INS_stg:
                 case INS_lay:
                 case INS_ley:
@@ -1191,6 +1209,13 @@ protected:
                 case INS_lmg:
                 case INS_xihf:
                 case INS_nihf:
+                case INS_j:
+                case INS_beq:
+                case INS_bne:
+                case INS_bgt:
+                case INS_ble:
+                case INS_blt:
+                case INS_bge:
                     size = 6;
                     break;
                 default:
