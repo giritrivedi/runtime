@@ -95,6 +95,7 @@ bool Lowering::IsContainableImmed(GenTree* parentNode, GenTree* childNode) const
             case GT_ADD:
             case GT_SUB:
             case GT_MUL:
+                //return emitter::emitIns_valid_imm_for_add(immVal, size); // Need to implement these
                 return (immVal >= INT32_MIN && immVal <= INT32_MAX);
 #if 0
             case GT_CMPXCHG:
@@ -119,7 +120,10 @@ bool Lowering::IsContainableImmed(GenTree* parentNode, GenTree* childNode) const
 #if 0
             case GT_TEST_EQ:
             case GT_TEST_NE:
-                return emitter::emitIns_valid_imm_for_alu(immVal, size);
+#endif
+                //return emitter::emitIns_valid_imm_for_alu(immVal, size); // Need to implement these
+                return (immVal >= INT32_MIN && immVal <= INT32_MAX);
+#if 0
             case GT_JCMP:
                 assert(immVal == 0);
                 return true;
