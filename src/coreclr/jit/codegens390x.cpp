@@ -4786,8 +4786,6 @@ instruction CodeGen::genGetInsForOper(GenTree* treeNode)
 {
     var_types  type = treeNode->TypeGet();
     genTreeOps oper = treeNode->OperGet();
-    GenTree*   op1  = treeNode->gtGetOp1();
-    GenTree*   op2;
     emitAttr   attr  = emitActualTypeSize(treeNode);
     bool       isImm = false;
 
