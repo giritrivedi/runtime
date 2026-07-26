@@ -10096,21 +10096,21 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_stmg:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
             break;
 
         case INS_lmg:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
             break;
 
         case INS_lay:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RXY_a(dst, op, id->idReg1(), 0, id->idReg2(), imm);
             break;
 
@@ -10124,21 +10124,21 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_lg:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RXY_a(dst, op, id->idReg1(), 0, id->idReg2(), imm);
             break;
 
         case INS_ley:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RXY_a(dst, op, id->idReg1() - 16, 0, id->idReg2(), imm);
             break;
 
         case INS_ldy:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RXY_a(dst, op, id->idReg1() - 16, 0, id->idReg2(), imm);
             break;
 
@@ -10149,7 +10149,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_lgfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
@@ -10168,35 +10168,35 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_cfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_cgfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_clfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_clgfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_chi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min16BitSigned) && (imm <= Max16BitSigned)); // 16 bit imm signed value
+            assert((imm >= Min16BitSigned) && (imm <= Max16BitSigned)); // 16 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RI_a(dst, op, id->idReg1(), imm);
             break;
@@ -10349,14 +10349,14 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_stey:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RXY_a(dst, op, id->idReg1() - 16, 0, id->idReg2(), imm);
             break;
 
         case INS_stdy:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
+            assert((imm >= Min20BitSigned) && (imm <= Max20BitSigned)); // 20 bit imm signed value
             S390_RXY_a(dst, op, id->idReg1() - 16, 0, id->idReg2(), imm);
             break;
 
@@ -10412,28 +10412,28 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_afi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_agfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_msfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_msgfi:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
@@ -10441,7 +10441,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_oill:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id);
-	    assert((imm >= Min16BitSigned) && (imm <= Max16BitSigned)); // 16 bit imm signed value
+            assert((imm >= Min16BitSigned) && (imm <= Max16BitSigned)); // 16 bit imm signed value
             S390_RI(dst, op, id->idReg1(), 0x80);
             break;
 
@@ -10461,14 +10461,14 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_nihf:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_xihf:
             imm = emitGetInsSC(id);
-	    assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
+            assert((imm >= Min32BitSigned) && (imm <= Max32BitSigned)); // 32 bit imm signed value
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
@@ -10496,7 +10496,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srdl:
         case INS_srda:
             imm = emitGetInsSC(id);
-	    assert((imm >= 0) && (imm <= Max12BitUnsigned)); // unsigned 12 bits
+            assert((imm >= 0) && (imm <= Max12BitUnsigned)); // unsigned 12 bits
             op  = emitInsCode(ins, fmt);
             S390_RS_a(dst, op, id->idReg1(), 0, 0, imm);
             break;
