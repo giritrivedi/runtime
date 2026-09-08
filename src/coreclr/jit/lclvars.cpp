@@ -6127,8 +6127,8 @@ void Compiler::lvaAssignVirtualFrameOffsetsToLocals()
     //
 #if defined TARGET_S390X
     int outArgSize           = (int)(unsigned)lvaOutgoingArgSpaceSize;
-    int stkOffs              = 160 + outArgSize;
-    int originalFrameSize    = 160 + outArgSize;
+    int stkOffs              = S390X_REG_SAVE_AREA_SIZE + outArgSize;
+    int originalFrameSize    = S390X_REG_SAVE_AREA_SIZE + outArgSize;
 #else
     int stkOffs              = 0;
     int originalFrameSize    = 0;
