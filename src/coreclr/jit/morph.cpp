@@ -7044,6 +7044,7 @@ GenTree* Compiler::fgMorphCall(GenTreeCall* call)
     // From this point on disallow shared temps to be reused until we are done
     // processing the call.
     SharedTempsScope sharedTemps(this);
+
     // Process the "normal" argument list
     call = fgMorphArgs(call);
     noway_assert(call->gtOper == GT_CALL);

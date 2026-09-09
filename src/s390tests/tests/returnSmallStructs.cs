@@ -5,14 +5,14 @@ struct Small {
 }
 
 class Program {
-    static Small MakeSmall(int v) {
+    static Small foo(int v) {
         Small s;
         s.Value = v;
         return s;
     }
 
     public static int s390xHw() {
-        Small s = MakeSmall(5);
+        Small s = foo(5);
         if (s.Value != 5)
             return 1;
         return 0;
