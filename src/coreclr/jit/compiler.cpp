@@ -948,9 +948,12 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
         }
     }
 #elif defined (TARGET_S390X)
+    if (callConv != CorInfoCallConvExtension::Managed)
+    {
         canReturnInRegister = false;
         howToReturnStruct   = SPK_ByReference;
         useType             = TYP_UNKNOWN;
+    }
 #endif
     if (TargetOS::IsWindows && !TargetArchitecture::IsArm32 && callConvIsInstanceMethodCallConv(callConv) &&
         !isNativePrimitiveStructType(clsHnd))
