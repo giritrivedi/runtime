@@ -10271,14 +10271,14 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_clfi:
             imm = emitGetInsSC(id);
-            assert(isValidSimm<32>(imm));
+            assert(isValidUimm<31>(imm));
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
 
         case INS_clgfi:
             imm = emitGetInsSC(id);
-            assert(isValidSimm<32>(imm));
+            assert(isValidUimm<31>(imm));
             op = emitInsCode(ins, fmt);
             S390_RIL_a(dst, op, id->idReg1(), imm);
             break;
@@ -10813,7 +10813,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_xgr:
            op = emitInsCode(ins, fmt);
-           S390_RR(dst, op, id->idReg1(), id->idReg2());
+           S390_RRE(dst, op, id->idReg1(), id->idReg2());
            break;
 
         case INS_xr:
