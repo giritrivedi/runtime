@@ -948,7 +948,7 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
         }
     }
 #elif defined (TARGET_S390X)
-    if (callConv != CorInfoCallConvExtension::Managed)
+    if (callConv != CorInfoCallConvExtension::Managed || (structSize <= MAX_PASS_SINGLEREG_BYTES && (structSize & (structSize - 1)) != 0))
     {
         canReturnInRegister = false;
         howToReturnStruct   = SPK_ByReference;
