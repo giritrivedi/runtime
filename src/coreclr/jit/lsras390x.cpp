@@ -712,10 +712,26 @@ int LinearScan::BuildCast(GenTreeCast* cast)
         setInternalRegsDelayFree = true;
     }
 #endif
-    
-    int srcCount = BuildCastUses(cast, RBM_NONE);
+
+    // Int<->float cast instructions (cefbr, cfebr, cdfbr, etc.) transfer between GPR and FPR,
+    // so the FPR operand is restricted to V0-V15 (see RBM_FPR_GPR_TRANSFER).
+    SingleTypeRegSet srcCandidates = RBM_NONE;
+    SingleTypeRegSet dstCandidates = RBM_NONE;
+
+    if (varTypeIsFloating(srcType) && !varTypeIsFloating(castType))
+    {
+        // Float-to-int: restrict the source float register to V0-V15.
+        srcCandidates = RBM_FPR_GPR_TRANSFER.GetFloatRegSet();
+    }
+    else if (!varTypeIsFloating(srcType) && varTypeIsFloating(castType))
+    {
+        // Int-to-float: restrict the destination float register to V0-V15.
+        dstCandidates = RBM_FPR_GPR_TRANSFER.GetFloatRegSet();
+    }
+
+    int srcCount = BuildCastUses(cast, srcCandidates); 
     buildInternalRegisterUses();
-    BuildDef(cast);
+    BuildDef(cast, dstCandidates);
     return srcCount;
 }       
 //------------------------------------------------------------------------

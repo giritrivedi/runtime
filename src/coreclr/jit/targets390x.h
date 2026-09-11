@@ -86,6 +86,12 @@
   #define RBM_ALLFLOAT            (RBM_FLT_CALLEE_SAVED | RBM_FLT_CALLEE_TRASH)
   #define RBM_ALLDOUBLE            RBM_ALLFLOAT
 
+  // Instructions that transfer between GPR and FPR (e.g. cefbr, cfebr, ldgr, lgdr) have a
+  // 4-bit FPR field and can only address V0-V15. These cannot be remapped to vector equivalents
+  // (which take VR->VR, not GPR->VR), so LSRA must restrict the FPR operand to this set.
+  #define RBM_FPR_GPR_TRANSFER    (RBM_V0|RBM_V1|RBM_V2|RBM_V3|RBM_V4|RBM_V5|RBM_V6|RBM_V7| \
+                                   RBM_V8|RBM_V9|RBM_V10|RBM_V11|RBM_V12|RBM_V13|RBM_V14|RBM_V15)
+
   // REG_VAR_ORDER is: (CALLEE_TRASH & ~CALLEE_TRASH_NOGC), CALLEE_TRASH_NOGC, CALLEE_SAVED
   #define REG_VAR_ORDER            REG_R1, REG_R2, REG_R3, REG_R4, REG_R5, \
                                    REG_R6, REG_R7, REG_R8, REG_R9, REG_R10,REG_R12,\
