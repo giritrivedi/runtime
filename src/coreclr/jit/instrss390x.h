@@ -160,7 +160,7 @@ INST(oilh,             "oilh",                 0,              0xA5A)
 
 //// R_I_b
 INST(bras,             "bras",                 0,              0xA75)
-
+INST(larl,             "larl",                 0,              0xC00)
 //// S_S
 INST(xc,               "xc",                   0,              0xD7)
 

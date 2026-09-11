@@ -832,7 +832,7 @@ int LinearScan::BuildIndir(GenTreeIndir* indirTree)
 
             // On ARM we may need a single internal register
             // (when both conditions are true then we still only need a single internal register)
-            if ((index != nullptr) && (cns != 0))
+            if ((index != nullptr))
             {
                 // ARM does not support both Index and offset so we need an internal register
                 buildInternalIntRegisterDefForNode(indirTree);

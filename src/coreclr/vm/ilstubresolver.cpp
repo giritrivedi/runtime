@@ -339,8 +339,8 @@ void ILStubResolver::SetLoaderHeap(PTR_LoaderHeap pLoaderHeap)
 static COR_ILMETHOD_DECODER CreateILHeader(size_t cbCode, UINT maxStack, BYTE* pNewILCodeBuffer, BYTE* pNewLocalSig, DWORD cbLocalSig)
 {
     COR_ILMETHOD_DECODER ilHeader{};
-    ilHeader.CodeSize = (DWORD)cbCode;
-    ilHeader.MaxStack = maxStack;
+    ilHeader.SetCodeSize((DWORD)cbCode);
+    ilHeader.SetMaxStack(maxStack);
     ilHeader.Code = pNewILCodeBuffer;
     ilHeader.LocalVarSig = pNewLocalSig;
     ilHeader.cbLocalVarSig = cbLocalSig;

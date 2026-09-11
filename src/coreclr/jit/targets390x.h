@@ -200,8 +200,8 @@
   #define RBM_PINVOKE_TARGET_PARAM          RBM_R1
 
   // IL stub's secret MethodDesc parameter (JitFlags::JIT_FLAG_PUBLISH_SECRET_PARAM)
-  #define REG_SECRET_STUB_PARAM     REG_R12
-  #define RBM_SECRET_STUB_PARAM     RBM_R12
+  #define REG_SECRET_STUB_PARAM     REG_R0
+  #define RBM_SECRET_STUB_PARAM     RBM_R0
 
   // R2R indirect call. Use the same registers as VSD
   #define REG_R2R_INDIRECT_PARAM          REG_R11
