@@ -870,7 +870,7 @@ static bool isStackRegister(regNumber reg)
 template <const size_t bits>
 static bool isValidUimm(ssize_t value)
 {
-    constexpr size_t max = 1 << bits;
+    constexpr size_t max = (size_t)1 << bits;
     return (0 <= value) && (value < max);
 }
 
