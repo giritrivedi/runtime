@@ -5150,6 +5150,17 @@ void Lowering::LowerRetSingleRegStructLclVar(GenTreeUnOp* ret)
             assert(genTypeSize(comp->info.compRetNativeType) == genTypeSize(comp->info.compRetType));
             lclVar->ChangeType(comp->info.compRetType);
         }
+#if BIGENDIAN
+        else if (varTypeIsSmall(comp->info.compRetNativeType))
+        {
+            // On big-endian, when a struct is returned as a small primitive
+            // (e.g. 2-byte struct as TYP_USHORT), we must use the exact native
+            // return type for the load.  genActualType widens TYP_USHORT to
+            // TYP_INT, but loading 4 bytes from a 2-byte field on big-endian
+            // places the data in the wrong byte position within the register.
+            lclVar->ChangeType(comp->info.compRetNativeType);
+        }
+#endif
         else
         {
             // Otherwise we don't mind that we leave the upper bits undefined.
