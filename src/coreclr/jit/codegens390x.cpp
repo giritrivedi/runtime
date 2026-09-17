@@ -5966,8 +5966,6 @@ void CodeGen::genAllocLclFrame(unsigned frameSize, regNumber initReg, bool* pIni
 //
 void CodeGen::genIntToFloatCast(GenTree* treeNode)
 {
-    _ASSERTE(!"NYI");
-#if 0
     // int type --> float/double conversions are always non-overflow ones
     assert(treeNode->OperGet() == GT_CAST);
     assert(!treeNode->gtOverflow());
@@ -5993,41 +5991,69 @@ void CodeGen::genIntToFloatCast(GenTree* treeNode)
     emitAttr srcSize = EA_ATTR(genTypeSize(srcType));
     noway_assert((srcSize == EA_4BYTE) || (srcSize == EA_8BYTE));
 
-    instruction ins       = varTypeIsUnsigned(srcType) ? INS_ucvtf : INS_scvtf;
-    insOpts     cvtOption = INS_OPTS_NONE; // invalid value
-
-    if (dstType == TYP_DOUBLE)
+    instruction ins;
+    if (varTypeIsUnsigned(srcType))
     {
-        if (srcSize == EA_4BYTE)
+        if (dstType == TYP_DOUBLE)
         {
-            cvtOption = INS_OPTS_4BYTE_TO_D;
+            if (srcSize == EA_4BYTE)
+            {
+                ins = INS_cdlfbr;
+            }
+            else
+            {
+                assert(srcSize == EA_8BYTE);
+                ins = INS_cdlgbr;
+            }
         }
         else
         {
-            assert(srcSize == EA_8BYTE);
-            cvtOption = INS_OPTS_8BYTE_TO_D;
+            assert(dstType == TYP_FLOAT);
+            if (srcSize == EA_4BYTE)
+            {
+                ins = INS_celfbr;
+            }
+            else
+            {
+                assert(srcSize == EA_8BYTE);
+                ins = INS_celgbr;
+            }
         }
     }
     else
     {
-        assert(dstType == TYP_FLOAT);
-        if (srcSize == EA_4BYTE)
+        if (dstType == TYP_DOUBLE)
         {
-            cvtOption = INS_OPTS_4BYTE_TO_S;
+            if (srcSize == EA_4BYTE)
+            {
+                ins = INS_cdfbr;
+            }
+            else
+            {
+                assert(srcSize == EA_8BYTE);
+                ins = INS_cdgbr;
+            }
         }
         else
         {
-            assert(srcSize == EA_8BYTE);
-            cvtOption = INS_OPTS_8BYTE_TO_S;
+            assert(dstType == TYP_FLOAT);
+            if (srcSize == EA_4BYTE)
+            {
+                ins = INS_cefbr;
+            }
+            else
+            {
+                assert(srcSize == EA_8BYTE);
+                ins = INS_cegbr;
+            }
         }
     }
 
     genConsumeOperands(treeNode->AsOp());
 
-    GetEmitter()->emitIns_R_R(ins, emitActualTypeSize(dstType), treeNode->GetRegNum(), op1->GetRegNum(), cvtOption);
+    GetEmitter()->emitIns_R_R(ins, emitActualTypeSize(dstType), treeNode->GetRegNum(), op1->GetRegNum());
 
     genProduceReg(treeNode);
-#endif
 }
 
 void CodeGen::genSetPSPSym(regNumber initReg, bool* pInitRegZeroed)
