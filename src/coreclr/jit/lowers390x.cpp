@@ -2960,9 +2960,6 @@ void Lowering::ContainCheckCast(GenTreeCast* node)
 //
 void Lowering::ContainCheckCompare(GenTreeOp* cmp)
 {
-    //EX_THROW(HRException, (E_FAIL));
-    //_ASSERTE(!"NYI");
-//#if 0 
     GenTree* op1 = cmp->gtGetOp1();
     GenTree* op2 = cmp->gtGetOp2();
 
@@ -2975,6 +2972,16 @@ void Lowering::ContainCheckCompare(GenTreeOp* cmp)
             ssize_t val = castOp->AsIntCon()->gtIconVal;
             if (val >= INT32_MIN && val <= INT32_MAX)
             {
+                if (op2->AsCast()->IsZeroExtending())
+                {
+                    val = (ssize_t)(uint32_t)val;
+                    if (cmp->OperIs(GT_EQ, GT_NE))
+                    {
+                        cmp->gtFlags |= GTF_UNSIGNED;
+                    }
+                }
+                castOp->AsIntCon()->gtIconVal = val;
+
                 castOp->gtType = TYP_LONG;
                 BlockRange().Remove(op2);
                 cmp->gtOp2 = castOp;
@@ -2990,6 +2997,15 @@ void Lowering::ContainCheckCompare(GenTreeOp* cmp)
             ssize_t val = castOp->AsIntCon()->gtIconVal;
             if (val >= INT32_MIN && val <= INT32_MAX)
             {
+                if (op1->AsCast()->IsZeroExtending())
+                {
+                    val = (ssize_t)(uint32_t)val;
+                    if (cmp->OperIs(GT_EQ, GT_NE))
+                    {
+                        cmp->gtFlags |= GTF_UNSIGNED;
+                    }
+                }
+                castOp->AsIntCon()->gtIconVal = val;
                 castOp->gtType = TYP_LONG;
                 BlockRange().Remove(op1);
                 cmp->gtOp1 = castOp;
