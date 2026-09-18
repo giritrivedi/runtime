@@ -31,6 +31,42 @@ enum ID_OPS
 
 //////////////////////////////////////////////////////////////////////////////
 //
+// s390x encoding-family formats
+//
+// Named after the IBM Principles of Operation encoding families.
+// All existing ARM64 IF_DEF entries below are intentionally preserved --
+// they are still used by live codegen paths (emitOutputInstr, size
+// calculation, sanity checks) that have not yet been ported from ARM64.
+//
+// Key:
+//   S390X_RR     RR      (2 bytes)   R1, R2
+//   S390X_RRE    RRE     (4 bytes)   R1, R2
+//   S390X_RRF_A  RRF-a   (4 bytes)   R1, R2, R3    (distinct-operands)
+//   S390X_RI_A   RI-a    (4 bytes)   R1, I2         (16-bit signed imm)
+//   S390X_RIL_A  RIL-a   (6 bytes)   R1, I2         (32-bit signed imm)
+//   S390X_RIL_B  RIL-b   (6 bytes)   R1, RI2        (PC-relative call)
+//   S390X_RI_C   RI-c    (4 bytes)   M1, RI2        (16-bit PC-rel branch)
+//   S390X_RIL_C  RIL-c   (6 bytes)   M1, RI2        (32-bit PC-rel branch)
+//   S390X_RX_A   RX-a    (4 bytes)   R1, D2(X2,B2)  (12-bit unsigned disp ld/st)
+//   S390X_RXY_A  RXY-a   (6 bytes)   R1, D2(X2,B2)  (20-bit signed disp ld/st)
+//   S390X_RSY_A  RSY-a   (6 bytes)   R1, R3, D2(B2) (reg-range + disp)
+//
+//////////////////////////////////////////////////////////////////////////////
+
+IF_DEF(S390X_RR,    IS_NONE, NONE)  // RR    R1, R2              e.g.  lr, ar, basr, bcr
+IF_DEF(S390X_RRE,   IS_NONE, NONE)  // RRE   R1, R2              e.g.  lgr, agr, sgr, lcgr
+IF_DEF(S390X_RRF_A, IS_NONE, NONE)  // RRF-a R1, R2, R3          e.g.  ark, agrk, srk, sgrk
+IF_DEF(S390X_RI_A,  IS_NONE, NONE)  // RI-a  R1, I2(16-bit)      e.g.  ahi, aghi, lghi, chi
+IF_DEF(S390X_RIL_A, IS_NONE, NONE)  // RIL-a R1, I2(32-bit)      e.g.  lgfi, agfi, iilf, iihf
+IF_DEF(S390X_RIL_B, IS_NONE, CALL)  // RIL-b R1, RI2              e.g.  brasl r14, <target>
+IF_DEF(S390X_RI_C,  IS_NONE, JMP)   // RI-c  M1, RI2 (16-bit)    e.g.  brc mask, label
+IF_DEF(S390X_RIL_C, IS_NONE, JMP)   // RIL-c M1, RI2 (32-bit)    e.g.  brcl mask, label
+IF_DEF(S390X_RX_A,  IS_NONE, NONE)  // RX-a  R1, D2(X2,B2)       e.g.  l, st, stc, sth (12-bit disp)
+IF_DEF(S390X_RXY_A, IS_NONE, NONE)  // RXY-a R1, D2(X2,B2)       e.g.  lg, stg, lay, lgb (20-bit disp)
+IF_DEF(S390X_RSY_A, IS_NONE, NONE)  // RSY-a R1, R3, D2(B2)      e.g.  stmg, lmg
+
+//////////////////////////////////////////////////////////////////////////////
+//
 // enum insFormat   instruction            enum ID_OPS
 //                  scheduling
 //                  (unused)
