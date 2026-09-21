@@ -1281,6 +1281,7 @@ protected:
                 case INS_vlgvg:
                 case INS_vlvgg:
                 case INS_larl:
+                case INS_xc:
                     size = 6;
                     break;
                 default:
