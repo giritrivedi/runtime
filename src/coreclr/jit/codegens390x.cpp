@@ -941,6 +941,7 @@ void CodeGen::genSetGSSecurityCookie(regNumber initReg, bool* pInitRegZeroed)
 //
 void CodeGen::genEmitGSCookieCheck(bool pushReg)
 {
+    return;
     _ASSERTE(!"NYI");
 /*
     noway_assert(compiler->gsGlobalSecurityCookieAddr || compiler->gsGlobalSecurityCookieVal);
@@ -6102,11 +6103,19 @@ void CodeGen::genZeroInitFrameUsingBlockInit(int untrLclHi, int untrLclLo, regNu
         GetEmitter()->emitIns_R_R_I(ins, attr, zeroReg, rTmpAddr, 0);
     };
 
-    while ((offset + (int)REGSIZE_BYTES) <= untrLclHi)
-    {
-        GetEmitter()->emitIns_R_R_I(INS_stg, EA_8BYTE, zeroReg, genFramePointerReg(), offset);
-        offset += REGSIZE_BYTES;
-    }
+
+     // Replace the STG/STY/STCY loops with XC.
+     // XC D(L,FP),D(FP) zeroes L bytes at FP+D by XOR-ing with itself.
+     // One XC handles up to 256 bytes → 2 descriptors for 448 bytes max.
+     // No scratch registers needed — pure memory operation.
+     while (offset < untrLclHi)
+     {
+         int remaining = untrLclHi - offset;
+         int chunkLen  = (remaining > 256) ? 256 : remaining;
+         assert(offset >= 0 && offset <= 4095); // 12-bit displacement
+         GetEmitter()->emitIns_SS(INS_xc, chunkLen, frameReg, offset);
+         offset += chunkLen;
+     }
 
     if ((offset + (int)sizeof(int)) <= untrLclHi)
     {

@@ -5491,6 +5491,47 @@ void emitter::emitIns_R_R_Imm(instruction ins, emitAttr attr, regNumber reg1, re
 #endif
 }
 
+
+ /*****************************************************************************
+  *
+  *  Add an SS-format instruction (Storage-to-Storage, 6 bytes).
+  *  SS-format: opc(8) | L(8) | B1(4) | D1(12) | B2(4) | D2(12)
+  *  Used for instructions like XC that operate on two memory operands.
+  *
+  *  Arguments:
+  *    ins     - instruction (e.g. INS_xc)
+  *    len     - number of bytes (1..256); encoded as L = len-1 in the instruction
+  *    baseReg - base register for both source and destination (same for XC)
+  *    disp    - 12-bit unsigned displacement (0..4095)
+  */
+
+ void emitter::emitIns_SS(instruction ins, int len, regNumber baseReg, int disp)
+ {
+     assert(len >= 1 && len <= 256);
+     assert(disp >= 0 && disp <= 4095);
+
+     switch (ins)
+     {
+         case INS_xc:
+             break;
+         default:
+             assert(!"emitIns_SS: unsupported SS-format instruction");
+             break;
+     }
+
+     // Pack: high 16 bits = L (len-1), low 16 bits = disp
+     ssize_t packed = (ssize_t)(((len - 1) << 16) | (disp & 0xfff));
+     instrDesc* id = emitNewInstrCns(EA_PTRSIZE, packed);
+     id->idIns(ins);
+     id->idInsFmt(IF_NONE);
+     id->idReg1(baseReg);  // B1 = B2 = baseReg (only one register needed)
+     id->idReg2(REG_NA);
+
+     dispIns(id);
+     appendToCurIG(id);
+}
+
+
 /*****************************************************************************
  *
  *  Add an instruction referencing three registers.
@@ -10875,6 +10916,17 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
            op = emitInsCode(ins, fmt); //no-op
            dst += emitOutputWord(dst, op);
            break;
+
+	case INS_xc:
+         {
+             imm    = emitGetInsSC(id);
+             op     = emitInsCode(ins, fmt);
+             int L  = (int)((imm >> 16) & 0xff);   // len-1
+             int b1 = (int)id->idReg1();            // base register
+             int d1 = (int)(imm & 0xfff);          // displacement
+             S390_SS_a(dst, op, L, b1, d1, b1, d1);
+             break;
+         }
 
         default:
             _ASSERTE(!"NYI");
