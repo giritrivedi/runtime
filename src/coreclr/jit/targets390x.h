@@ -204,8 +204,8 @@
   #define RBM_SECRET_STUB_PARAM     RBM_R12
 
   // R2R indirect call. Use the same registers as VSD
-  #define REG_R2R_INDIRECT_PARAM          REG_R11
-  #define RBM_R2R_INDIRECT_PARAM          RBM_R11
+  #define REG_R2R_INDIRECT_PARAM          REG_R10
+  #define RBM_R2R_INDIRECT_PARAM          RBM_R10
 
   // JMP Indirect call register
   #define REG_INDIRECT_CALL_TARGET_REG    REG_IP0
