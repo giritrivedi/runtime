@@ -10635,6 +10635,22 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             S390_RRF_4(dst, op, id->idReg1(), 5, id->idReg2() - REG_V0, 0);
             break;
 
+        case INS_cefbr:
+        case INS_cdfbr:
+        case INS_cegbr:
+        case INS_cdgbr:
+            op = emitInsCode(ins, fmt);
+            S390_RRF_2(dst, op, (id->idReg1() - REG_V0), 0, id->idReg2());
+            break;
+
+        case INS_celfbr:
+        case INS_cdlfbr:
+        case INS_celgbr:
+        case INS_cdlgbr:
+            op = emitInsCode(ins, fmt);
+            S390_RRF_4(dst, op, (id->idReg1() - REG_V0), 0, id->idReg2(), 0);
+            break;
+
         case INS_ldebr:
             op = emitInsCode(ins, fmt);
             S390_RRE(dst, op, (id->idReg1() - REG_V0), (id->idReg2() - REG_V0));
