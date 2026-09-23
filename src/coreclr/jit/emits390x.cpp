@@ -5509,15 +5509,7 @@ void emitter::emitIns_R_R_Imm(instruction ins, emitAttr attr, regNumber reg1, re
  {
      assert(len >= 1 && len <= 256);
      assert(disp >= 0 && disp <= 4095);
-
-     switch (ins)
-     {
-         case INS_xc:
-             break;
-         default:
-             assert(!"emitIns_SS: unsupported SS-format instruction");
-             break;
-     }
+     assert(ins == INS_xc);
 
      // Pack: high 16 bits = L (len-1), low 16 bits = disp
      ssize_t packed = (ssize_t)(((len - 1) << 16) | (disp & 0xfff));
