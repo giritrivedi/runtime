@@ -4367,13 +4367,12 @@ void CodeGen::genCodeForBinary(GenTreeOp* treeNode)
         regNumber r = emit->emitInsBinary(ins, emitTypeSize(treeNode), treeNode, op2);
         assert(r == targetReg);
     }
-    else if (targetReg == op1->GetRegNum() || targetReg == op2->GetRegNum())
+    else
     {
-        assert(targetReg == op1->GetRegNum() || treeNode->OperIsCommutative());
-        regNumber src  = (targetReg == op1->GetRegNum()) ? op2->GetRegNum() : op1->GetRegNum();
         instruction ins2 = ins3RegTo2Reg(ins);
-        if (ins2 != INS_invalid)
+        if ((ins2 != INS_invalid) && ((targetReg == op1->GetRegNum()) || ((targetReg == op2->GetRegNum()) && treeNode->OperIsCommutative())))
         {
+            regNumber src = targetReg == op1->GetRegNum() ? op2->GetRegNum() : op1->GetRegNum();
             emit->emitIns_R_R(ins2, emitTypeSize(treeNode), targetReg, src);
         }
         else
@@ -4382,12 +4381,6 @@ void CodeGen::genCodeForBinary(GenTreeOp* treeNode)
             assert(r == targetReg);
         }
     }
-    else
-    {
-        regNumber r = emit->emitInsTernary(ins, emitTypeSize(treeNode), treeNode, op1, op2);
-        assert(r == targetReg);
-    }
-
     genProduceReg(treeNode);
 }
 
