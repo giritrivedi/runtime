@@ -1494,6 +1494,9 @@ public:
     {
         LIMITED_METHOD_CONTRACT;
         size_t ofs = offsetof(class Thread, m_fPreemptiveGCDisabled);
+#ifdef TARGET_S390X
+        ofs += sizeof(m_fPreemptiveGCDisabled) - 1;
+#endif
         _ASSERTE(FitsInI1(ofs));
         return (BYTE)ofs;
     }
