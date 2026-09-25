@@ -3640,36 +3640,54 @@ void CodeGen::genJmpPlaceVarArgs()
 //
 void CodeGen::genIntCastOverflowCheck(GenTreeCast* cast, const GenIntCastDesc& desc, regNumber reg)
 {
-    _ASSERTE(!"NYI");
-/*
     switch (desc.CheckKind())
     {
         case GenIntCastDesc::CHECK_POSITIVE:
-            GetEmitter()->emitIns_R_I(INS_cmp, EA_ATTR(desc.CheckSrcSize()), reg, 0);
+        {
+            // Value must be >= 0.
+            // ltgr sets CC from the register value (CC=1 if negative).
+            // For 32-bit source, use cfi with 0 since ltgr is 64-bit only.
+            if (desc.CheckSrcSize() == 8)
+            {
+                GetEmitter()->emitIns_R_R(INS_ltgr, EA_8BYTE, reg, reg);
+            }
+            else
+            {
+                GetEmitter()->emitIns_R_I(INS_cfi, EA_4BYTE, reg, 0);
+            }
             genJumpToThrowHlpBlk(EJ_lt, SCK_OVERFLOW);
-            break;
+        }
+        break;
 
 #ifdef TARGET_64BIT
         case GenIntCastDesc::CHECK_UINT_RANGE:
-            // We need to check if the value is not greater than 0xFFFFFFFF but this value
-            // cannot be encoded in the immediate operand of CMP. Use TST instead to check
-            // if the upper 32 bits are zero.
-            GetEmitter()->emitIns_R_I(INS_tst, EA_8BYTE, reg, 0xFFFFFFFF00000000LL);
+        {
+            // Value must fit in [0, 0xFFFFFFFF].
+            // clgfr zero-extends the lower 32 bits and compares with the full
+            // 64-bit value in a single instruction. If they differ, the value
+            // has non-zero upper bits or is negative — both mean overflow.
+            GetEmitter()->emitIns_R_R(INS_clgfr, EA_8BYTE, reg, reg);
             genJumpToThrowHlpBlk(EJ_ne, SCK_OVERFLOW);
-            break;
+        }
+        break;
 
         case GenIntCastDesc::CHECK_POSITIVE_INT_RANGE:
-            // We need to check if the value is not greater than 0x7FFFFFFF but this value
-            // cannot be encoded in the immediate operand of CMP. Use TST instead to check
-            // if the upper 33 bits are zero.
-            GetEmitter()->emitIns_R_I(INS_tst, EA_8BYTE, reg, 0xFFFFFFFF80000000LL);
+        {
+            // Value must fit in [0, 0x7FFFFFFF].
+            // Shift right by 31 — if any of the upper 33 bits are set, overflow.
+            GetEmitter()->emitIns_R_R_I(INS_srlg, EA_8BYTE, REG_R1, reg, 31);
+            GetEmitter()->emitIns_R_R(INS_ltgr, EA_8BYTE, REG_R1, REG_R1);
             genJumpToThrowHlpBlk(EJ_ne, SCK_OVERFLOW);
-            break;
+        }
+        break;
 
         case GenIntCastDesc::CHECK_INT_RANGE:
         {
-            // Emit "if ((long)(int)x != x) goto OVERFLOW"
-            GetEmitter()->emitIns_R_R(INS_cmp, EA_8BYTE, reg, reg, INS_OPTS_SXTW);
+            // Value must fit in [INT32_MIN, INT32_MAX].
+            // cgfr sign-extends the lower 32 bits and compares with the full
+            // 64-bit value in a single instruction. If they differ, the value
+            // doesn't fit in a signed 32-bit int.
+            GetEmitter()->emitIns_R_R(INS_cgfr, EA_8BYTE, reg, reg);
             genJumpToThrowHlpBlk(EJ_ne, SCK_OVERFLOW);
         }
         break;
@@ -3681,31 +3699,28 @@ void CodeGen::genIntCastOverflowCheck(GenTreeCast* cast, const GenIntCastDesc& d
             const int castMaxValue = desc.CheckSmallIntMax();
             const int castMinValue = desc.CheckSmallIntMin();
 
-            // Values greater than 255 cannot be encoded in the immediate operand of CMP.
-            // Replace (x > max) with (x >= max + 1) where max + 1 (a power of 2) can be
-            // encoded. We could do this for all max values but on ARM32 "cmp r0, 255"
-            // is better than "cmp r0, 256" because it has a shorter encoding.
-            if (castMaxValue > 255)
+            instruction cmpIns = (desc.CheckSrcSize() == 8) ? INS_cgfi : INS_cfi;
+            emitAttr    cmpSize = EA_ATTR(desc.CheckSrcSize());
+
+            if (castMinValue == 0)
             {
-                assert((castMaxValue == 32767) || (castMaxValue == 65535));
-                GetEmitter()->emitIns_R_I(INS_cmp, EA_SIZE(desc.CheckSrcSize()), reg, castMaxValue + 1);
-                genJumpToThrowHlpBlk((castMinValue == 0) ? EJ_hs : EJ_ge, SCK_OVERFLOW);
+                // Unsigned small type (byte, ushort): compare logical against max+1
+                instruction clIns = (desc.CheckSrcSize() == 8) ? INS_clgfi : INS_clfi;
+                GetEmitter()->emitIns_R_I(clIns, cmpSize, reg, castMaxValue + 1);
+                genJumpToThrowHlpBlk(EJ_ge, SCK_OVERFLOW);
             }
             else
             {
-                GetEmitter()->emitIns_R_I(INS_cmp, EA_SIZE(desc.CheckSrcSize()), reg, castMaxValue);
-                genJumpToThrowHlpBlk((castMinValue == 0) ? EJ_hi : EJ_gt, SCK_OVERFLOW);
-            }
+                // Signed small type (sbyte, short): check val > max OR val < min
+                GetEmitter()->emitIns_R_I(cmpIns, cmpSize, reg, castMaxValue);
+                genJumpToThrowHlpBlk(EJ_gt, SCK_OVERFLOW);
 
-            if (castMinValue != 0)
-            {
-                GetEmitter()->emitIns_R_I(INS_cmp, EA_SIZE(desc.CheckSrcSize()), reg, castMinValue);
+                GetEmitter()->emitIns_R_I(cmpIns, cmpSize, reg, castMinValue);
                 genJumpToThrowHlpBlk(EJ_lt, SCK_OVERFLOW);
             }
         }
         break;
     }
-*/
 }
 
 //------------------------------------------------------------------------
@@ -3733,8 +3748,7 @@ void CodeGen::genIntToIntCast(GenTreeCast* cast)
     if (desc.CheckKind() != GenIntCastDesc::CHECK_NONE)
     {
         assert(genIsValidIntReg(srcReg));
-        //genIntCastOverflowCheck(cast, desc, srcReg);
-         NYI("genIntCastOverflowCheck for s390x");
+         genIntCastOverflowCheck(cast, desc, srcReg);
     }
 
     if ((desc.ExtendKind() != GenIntCastDesc::COPY) || (srcReg != dstReg))
