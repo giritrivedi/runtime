@@ -10351,6 +10351,14 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             S390_RRF_a(dst, op, id->idReg3(), id->idReg1(), id->idReg2());
         break;
 
+        case INS_lghi:
+        case INS_aghi:
+            op  = emitInsCode(ins, fmt);
+            imm = emitGetInsSC(id);
+            assert(isValidSimm<16>(imm));
+            S390_RI(dst, op, id->idReg1(), imm);
+            break;
+
         case INS_lr:
         case INS_cr:
         case INS_clr:

@@ -8404,16 +8404,8 @@ public:
             reg     = REG_T5;
             regMask = RBM_T5;
 #elif defined(TARGET_S390X)
-            if (isNativeAOT)
-            {
-                reg     = REG_R10;
-                regMask = RBM_R10;
-            }
-            else
-            {
-                reg     = REG_R11;
-                regMask = RBM_R11;
-            }
+            reg     = REG_R10;
+            regMask = RBM_R10;
 #else
 #error Unsupported or unset target architecture
 #endif
