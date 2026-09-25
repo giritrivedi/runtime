@@ -135,10 +135,15 @@ InterpreterMethodInfo::InterpreterMethodInfo(CEEInfo* comp, CORINFO_METHOD_INFO*
         hasRetBuff = false;
     }
 #elif defined(HOST_S390X)
-    if (methInfo->args.retType == CORINFO_TYPE_VALUECLASS &&
-        isNativePrimitiveStructType(comp, methInfo->args.retTypeClass))
+    if (methInfo->args.retType == CORINFO_TYPE_VALUECLASS )
     {
-        hasRetBuff = false;
+        unsigned structSize;
+        structSize = getClassSize(methInfo->args.retTypeClass);
+        if ( isNativePrimitiveStructType(comp, methInfo->args.retTypeClass) ||
+	     (structSize <= sizeof(void*) && (structSize & (structSize - 1)) != 0))
+        {
+            hasRetBuff = false;
+        }
     }
 #endif
     SetFlag<Flag_hasRetBuffArg>(hasRetBuff);
