@@ -4413,8 +4413,13 @@ void CodeGen::genCodeForCompare(GenTreeOp* tree)
         bool isUnsigned = (tree->gtFlags & GTF_UNSIGNED) != 0;
         cmpSize = EA_ATTR(genTypeSize(op1Type));
         if (isUnsigned)
+	{
             cmpIns = (cmpSize == EA_8BYTE) ? INS_clgfi : INS_clfi;
-        else if (imm >= -32768 && imm <= 32767)
+	    // Handle 32-bit unsigned value stored in a signed 64-bit
+            if (cmpSize == EA_4BYTE)
+		imm = static_cast<ssize_t>(static_cast<uint32_t>(imm));
+	}
+	else if (imm >= -32768 && imm <= 32767)
 	    cmpIns = (cmpSize == EA_8BYTE) ? INS_cgfi : INS_chi;
 	    else
             cmpIns = (cmpSize == EA_8BYTE) ? INS_cgfi : INS_cfi;
