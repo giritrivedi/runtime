@@ -90,23 +90,39 @@ size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
     if (emitIsSmallInsDsc(id))
         return SMALL_IDSC_SIZE;
 
-    switch (id->idIns())
+	//return sizeof(instrDesc);
+    assert((unsigned)id->idInsFmt() < emitFmtCount);
+
+    ID_OPS idOp      = (ID_OPS)emitFmtToOps[id->idInsFmt()];
+    bool   isCallIns = false ; //(id->idIns() == INS_bl) || (id->idIns() == INS_blr) || (id->idIns() == INS_b_tail) ||
+                     //(id->idIns() == INS_br_tail);
+    bool maybeCallIns = false ;//(id->idIns() == INS_b) || (id->idIns() == INS_br);
+
+    switch (idOp)
     {
-        case INS_j:
-        case INS_beq:
-        case INS_bne:
-        case INS_bgt:
-        case INS_ble:
-        case INS_blt:
-        case INS_bge:
-        case INS_bnl:
-        case INS_bl:
-        case INS_bo:
-        case INS_bno:
-        case INS_larl:
+        case ID_OP_NONE:
+            break;
+
+        case ID_OP_JMP:
             return sizeof(instrDescJmp);
 
+        case ID_OP_CALL:
+            assert(isCallIns || maybeCallIns);
+            if (id->idIsLargeCall())
+            {
+                /* Must be a "fat" call descriptor */
+                return sizeof(instrDescCGCA);
+            }
+            else
+            {
+                assert(!id->idIsLargeDsp());
+                assert(!id->idIsLargeCns());
+                return sizeof(instrDesc);
+            }
+            break;
+
         default:
+            NO_WAY("unexpected instruction descriptor format");
             break;
     }
 
@@ -8321,11 +8337,20 @@ void emitter::emitIns_R_L(instruction ins, emitAttr attr, BasicBlock* dst, regNu
 
     insFormat fmt = IF_NONE;
 
-    assert(ins == INS_larl);
+    switch (ins)
+    {
+        case INS_larl:
+            //TODO: ARM fmts should be changed later
+            fmt = IF_LARGEADR;
+            break;
+        default:
+            unreached();
+    }
 
     instrDescJmp* id = emitNewInstrJmp();
 
     id->idIns(ins);
+    id->idInsFmt(fmt);
     id->idjShort             = false;
     id->idAddr()->iiaBBlabel = dst;
     id->idReg1(reg);
@@ -8463,6 +8488,7 @@ void emitter::emitIns_J(instruction ins, BasicBlock* dst, int instrCount)
 {
     instrDescJmp* id = emitNewInstrJmp();
     id->idIns(ins);
+    id->idInsFmt(IF_BI_0A);
     id->idOpSize(EA_PTRSIZE);
     if (dst != nullptr)
     {
