@@ -90,39 +90,23 @@ size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
     if (emitIsSmallInsDsc(id))
         return SMALL_IDSC_SIZE;
 
-	//return sizeof(instrDesc);
-    assert((unsigned)id->idInsFmt() < emitFmtCount);
-
-    ID_OPS idOp      = (ID_OPS)emitFmtToOps[id->idInsFmt()];
-    bool   isCallIns = false ; //(id->idIns() == INS_bl) || (id->idIns() == INS_blr) || (id->idIns() == INS_b_tail) ||
-                     //(id->idIns() == INS_br_tail);
-    bool maybeCallIns = false ;//(id->idIns() == INS_b) || (id->idIns() == INS_br);
-
-    switch (idOp)
+    switch (id->idIns())
     {
-        case ID_OP_NONE:
-            break;
-
-        case ID_OP_JMP:
+        case INS_j:
+        case INS_beq:
+        case INS_bne:
+        case INS_bgt:
+        case INS_ble:
+        case INS_blt:
+        case INS_bge:
+        case INS_bnl:
+        case INS_bl:
+        case INS_bo:
+        case INS_bno:
+        case INS_larl:
             return sizeof(instrDescJmp);
 
-        case ID_OP_CALL:
-            assert(isCallIns || maybeCallIns);
-            if (id->idIsLargeCall())
-            {
-                /* Must be a "fat" call descriptor */
-                return sizeof(instrDescCGCA);
-            }
-            else
-            {
-                assert(!id->idIsLargeDsp());
-                assert(!id->idIsLargeCns());
-                return sizeof(instrDesc);
-            }
-            break;
-
         default:
-            NO_WAY("unexpected instruction descriptor format");
             break;
     }
 
@@ -8333,25 +8317,15 @@ void emitter::emitSetShortJump(instrDescJmp* id)
 
 void emitter::emitIns_R_L(instruction ins, emitAttr attr, BasicBlock* dst, regNumber reg)
 {
-    _ASSERTE(!"NYI");
-#if 0
     assert(dst->HasFlag(BBF_HAS_LABEL));
 
     insFormat fmt = IF_NONE;
 
-    switch (ins)
-    {
-        case INS_adr:
-            fmt = IF_LARGEADR;
-            break;
-        default:
-            unreached();
-    }
+    assert(ins == INS_larl);
 
     instrDescJmp* id = emitNewInstrJmp();
 
     id->idIns(ins);
-    id->idInsFmt(fmt);
     id->idjShort             = false;
     id->idAddr()->iiaBBlabel = dst;
     id->idReg1(reg);
@@ -8388,7 +8362,6 @@ void emitter::emitIns_R_L(instruction ins, emitAttr attr, BasicBlock* dst, regNu
 
     dispIns(id);
     appendToCurIG(id);
-#endif
 }
 
 /*****************************************************************************
@@ -8490,7 +8463,6 @@ void emitter::emitIns_J(instruction ins, BasicBlock* dst, int instrCount)
 {
     instrDescJmp* id = emitNewInstrJmp();
     id->idIns(ins);
-    id->idInsFmt(IF_BI_0A);
     id->idOpSize(EA_PTRSIZE);
     if (dst != nullptr)
     {
@@ -9709,6 +9681,15 @@ BYTE* emitter::emitOutputLJ(insGroup* ig, BYTE* dst, instrDesc* i)
 
     id->idjTemp.idjAddr = (distVal > 0) ? dst : NULL;
 
+    int32_t offset_hw = (int32_t)(distVal / 2);
+    code_t op = emitInsCode(ins, IF_NONE);
+
+    if (ins == INS_larl)
+    {
+        S390_RIL_b(dst, op, id->idReg1(), offset_hw);
+        return dst;
+    }
+
     unsigned mask;
     switch (ins)
     {
@@ -9726,8 +9707,6 @@ BYTE* emitter::emitOutputLJ(insGroup* ig, BYTE* dst, instrDesc* i)
         default: unreached();
     }
 
-    int32_t offset_hw = (int32_t)(distVal / 2);
-    code_t op = emitInsCode(ins, IF_NONE);
     S390_RIL_a(dst, op, mask, offset_hw);
     return dst;
 }
@@ -10375,6 +10354,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_bno:
         case INS_bl:
         case INS_bnl:
+        case INS_larl:
             dst = emitOutputLJ(ig, dst, id);
             sz = sizeof(instrDescJmp);
             break;

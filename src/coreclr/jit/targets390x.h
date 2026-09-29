@@ -192,12 +192,12 @@
   #define RBM_CALLEE_GCTRASH_WRITEBARRIER_BYREF RBM_CALLEE_TRASH_NOGC
 
   // GenericPInvokeCalliHelper VASigCookie Parameter
-  #define REG_PINVOKE_COOKIE_PARAM          REG_R0
-  #define RBM_PINVOKE_COOKIE_PARAM          RBM_R0
+  #define REG_PINVOKE_COOKIE_PARAM          REG_R1
+  #define RBM_PINVOKE_COOKIE_PARAM          RBM_R1
 
   // GenericPInvokeCalliHelper unmanaged target Parameter
-  #define REG_PINVOKE_TARGET_PARAM          REG_R1
-  #define RBM_PINVOKE_TARGET_PARAM          RBM_R1
+  #define REG_PINVOKE_TARGET_PARAM          REG_R0
+  #define RBM_PINVOKE_TARGET_PARAM          RBM_R0
 
   // IL stub's secret MethodDesc parameter (JitFlags::JIT_FLAG_PUBLISH_SECRET_PARAM)
   #define REG_SECRET_STUB_PARAM     REG_R0
