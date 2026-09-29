@@ -2942,7 +2942,10 @@ void CodeGen::genCall(GenTreeCall* call)
     {
         case CT_USER_FUNC:
         {
-            callAddr = call->gtDirectCallAddress;
+            if (call->gtControlExpr == nullptr)
+            {
+                callAddr = call->gtDirectCallAddress;
+            }
             break;
         }
 
@@ -2964,7 +2967,7 @@ void CodeGen::genCall(GenTreeCall* call)
             else
             {
                 // Call through register already set up
-                callReg = REG_R1;
+                callReg = REG_R10;
             }
             break;
         }
