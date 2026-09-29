@@ -94,9 +94,8 @@ size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
     assert((unsigned)id->idInsFmt() < emitFmtCount);
 
     ID_OPS idOp      = (ID_OPS)emitFmtToOps[id->idInsFmt()];
-    bool   isCallIns = false ; //(id->idIns() == INS_bl) || (id->idIns() == INS_blr) || (id->idIns() == INS_b_tail) ||
-                     //(id->idIns() == INS_br_tail);
-    bool maybeCallIns = false ;//(id->idIns() == INS_b) || (id->idIns() == INS_br);
+    bool   isCallIns = (id->idIns() == INS_brasl) || (id->idIns() == INS_basr) || (id->idIns() == INS_bras);
+    bool maybeCallIns = (id->idIns() == INS_j) || (id->idIns() == INS_br);
 
     switch (idOp)
     {
