@@ -96,6 +96,16 @@ static bool strictArmAsm;
     dst += emitOutputLong(dst, ((opc << 24) | ((r1) << 20) |((r3) << 16) | ((b2) << 12) | ((d2) & 0xfff)));    \
 }
 
+// SS-a format: opc(8)|L(8)|B1(4)|D1(12)|B2(4)|D2(12) = 6 bytes total
+#define S390_SS_a(dst, opc, l, b1, d1, b2, d2)                 \
+{                                                               \
+    dst += emitOutputWord(dst, (((opc) << 8) | ((l) & 0xff))); \
+    dst += emitOutputLong(dst, ((((b1) & 0xf) << 28) |         \
+                           (((d1) & 0xfff) << 16) |             \
+                           (((b2) & 0xf)   << 12) |             \
+                           ((d2) & 0xfff)));                     \
+}
+
 #define S390_VRR_c(dst, opc, v1, v2, v3, m6, m5, m4, rxb)              \
 {                                                                       \
     dst += emitOutputWord(dst, (((opc >> 8) << 8) | ((v1 & 0xf) << 4) | (v2 & 0xf))); \
@@ -1751,6 +1761,11 @@ void emitIns_PRFOP_R_R_I(instruction ins,
 void emitIns_BARR(instruction ins, insBarrier barrier);
 
 void emitIns_C(instruction ins, emitAttr attr, CORINFO_FIELD_HANDLE fdlHnd, int offs);
+
+// Emit SS-format instruction: opc(8)|L(8)|B1(4)|D1(12)|B2(4)|D2(12)
+// Used for storage-to-storage operations like XC (zero memory by XOR-with-self).
+// len: bytes to operate on (1..256), baseReg: base register, disp: 12-bit displacement.
+void emitIns_SS(instruction ins, int len, regNumber baseReg, int disp);
 
 void emitIns_S(instruction ins, emitAttr attr, int varx, int offs);
 
