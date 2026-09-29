@@ -8333,15 +8333,14 @@ void emitter::emitSetShortJump(instrDescJmp* id)
 
 void emitter::emitIns_R_L(instruction ins, emitAttr attr, BasicBlock* dst, regNumber reg)
 {
-    _ASSERTE(!"NYI");
-#if 0
     assert(dst->HasFlag(BBF_HAS_LABEL));
 
     insFormat fmt = IF_NONE;
 
     switch (ins)
     {
-        case INS_adr:
+        case INS_larl:
+            //TODO: ARM fmts should be changed later
             fmt = IF_LARGEADR;
             break;
         default:
@@ -8388,7 +8387,6 @@ void emitter::emitIns_R_L(instruction ins, emitAttr attr, BasicBlock* dst, regNu
 
     dispIns(id);
     appendToCurIG(id);
-#endif
 }
 
 /*****************************************************************************
@@ -9709,6 +9707,15 @@ BYTE* emitter::emitOutputLJ(insGroup* ig, BYTE* dst, instrDesc* i)
 
     id->idjTemp.idjAddr = (distVal > 0) ? dst : NULL;
 
+    int32_t offset_hw = (int32_t)(distVal / 2);
+    code_t op = emitInsCode(ins, IF_NONE);
+
+    if (ins == INS_larl)
+    {
+        S390_RIL_b(dst, op, id->idReg1(), offset_hw);
+        return dst;
+    }
+
     unsigned mask;
     switch (ins)
     {
@@ -9726,8 +9733,6 @@ BYTE* emitter::emitOutputLJ(insGroup* ig, BYTE* dst, instrDesc* i)
         default: unreached();
     }
 
-    int32_t offset_hw = (int32_t)(distVal / 2);
-    code_t op = emitInsCode(ins, IF_NONE);
     S390_RIL_a(dst, op, mask, offset_hw);
     return dst;
 }
@@ -10375,6 +10380,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_bno:
         case INS_bl:
         case INS_bnl:
+        case INS_larl:
             dst = emitOutputLJ(ig, dst, id);
             sz = sizeof(instrDescJmp);
             break;

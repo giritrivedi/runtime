@@ -842,24 +842,20 @@ void CodeGen::genCodeForTreeNode(GenTree* treeNode)
 //            genConsumeReg(treeNode);
 //            break;
 //
-//        case GT_PINVOKE_PROLOG:
-//            noway_assert(((gcInfo.gcRegGCrefSetCur | gcInfo.gcRegByrefSetCur) &
-//                          ~fullIntArgRegMask(compiler->info.compCallConv)) == 0);
+        case GT_PINVOKE_PROLOG:
+            noway_assert(((gcInfo.gcRegGCrefSetCur | gcInfo.gcRegByrefSetCur) &
+                          ~fullIntArgRegMask(compiler->info.compCallConv)) == 0);
 
 #ifdef PSEUDORANDOM_NOP_INSERTION
             // the runtime side requires the codegen here to be consistent
             emit->emitDisableRandomNops();
 #endif // PSEUDORANDOM_NOP_INSERTION
-//            break;
-//
-//        case GT_LABEL:
-//            genPendingCallLabel = genCreateTempLabel();
-//#if defined(TARGET_ARM)
-//            genMov32RelocatableDisplacement(genPendingCallLabel, targetReg);
-//#else
-//            emit->emitIns_R_L(INS_adr, EA_PTRSIZE, genPendingCallLabel, targetReg);
-//#endif
-//            break;
+            break;
+
+        case GT_LABEL:
+            genPendingCallLabel = genCreateTempLabel();
+            emit->emitIns_R_L(INS_larl, EA_PTRSIZE, genPendingCallLabel, targetReg);
+            break;
 
         case GT_STORE_BLK:
             genCodeForStoreBlk(treeNode->AsBlk());
@@ -2955,13 +2951,7 @@ void CodeGen::genCall(GenTreeCall* call)
         }
         case CT_INDIRECT:
         {
-            // Target address is in a register or memory
-            if (call->gtCallAddr != nullptr)
-            {
-                genConsumeReg(call->gtCallAddr);
-                callReg = call->gtCallAddr->GetRegNum();
-            }
-            else
+            if (call->gtCallAddr == nullptr)
             {
                 // Call through register already set up
                 callReg = REG_R1;
@@ -3043,6 +3033,11 @@ void CodeGen::genCall(GenTreeCall* call)
     {
         // Indirect call: BASR r14, callReg
         // This branches to address in callReg and saves return address in r14
+        if (call->gtCallAddr != nullptr)
+        {
+            genConsumeReg(call->gtCallAddr);
+            callReg = call->gtCallAddr->GetRegNum();
+        }
         GetEmitter()->emitIns_R_R(INS_basr, EA_PTRSIZE, REG_R14, callReg);
 
         // Record call site for GC
@@ -3101,7 +3096,7 @@ void CodeGen::genCall(GenTreeCall* call)
             false       // isJump
         );
     }
-
+    genDefinePendingCallLabel(call);
     // Mark killed registers as no longer containing GC pointers
     gcInfo.gcMarkRegSetNpt(killMask & ~argRegsUsed);
 
