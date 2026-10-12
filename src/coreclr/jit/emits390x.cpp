@@ -5760,6 +5760,8 @@ void emitter::emitIns_R_R_R(instruction     ins,
         case INS_nogrk:
         case INS_rll:
         case INS_rllg:
+        case INS_sllk:
+        case INS_srak:
         case INS_srlk:
         case INS_srlg:
 
