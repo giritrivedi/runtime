@@ -171,22 +171,22 @@
 /* s390xmarker - currently implementing the register set for the lsra, hence removing the unrelated register values */
 /* to fix build errors - please visit back and update values accordingly.					    */
 
-  #define REG_WRITE_BARRIER_DST          REG_R14
-  #define RBM_WRITE_BARRIER_DST          RBM_R14
+  #define REG_WRITE_BARRIER_DST          REG_R2
+  #define RBM_WRITE_BARRIER_DST          RBM_R2
 
-  #define REG_WRITE_BARRIER_SRC          REG_R15
-  #define RBM_WRITE_BARRIER_SRC          RBM_R15
+  #define REG_WRITE_BARRIER_SRC          REG_R3
+  #define RBM_WRITE_BARRIER_SRC          RBM_R3
 
-  #define REG_WRITE_BARRIER_DST_BYREF    REG_R14
-  #define RBM_WRITE_BARRIER_DST_BYREF    RBM_R14
+  #define REG_WRITE_BARRIER_DST_BYREF    REG_R2
+  #define RBM_WRITE_BARRIER_DST_BYREF    RBM_R2
 
-  #define REG_WRITE_BARRIER_SRC_BYREF    REG_R13
-  #define RBM_WRITE_BARRIER_SRC_BYREF    RBM_R13
+  #define REG_WRITE_BARRIER_SRC_BYREF    REG_R3
+  #define RBM_WRITE_BARRIER_SRC_BYREF    RBM_R3
 
   #define RBM_CALLEE_TRASH_NOGC          (RBM_DEFAULT_HELPER_CALL_TARGET)
 
   // Registers killed by CORINFO_HELP_ASSIGN_REF and CORINFO_HELP_CHECKED_ASSIGN_REF.
-  #define RBM_CALLEE_TRASH_WRITEBARRIER         (RBM_R14|RBM_CALLEE_TRASH_NOGC)
+  #define RBM_CALLEE_TRASH_WRITEBARRIER         (RBM_R2|RBM_R3|RBM_CALLEE_TRASH_NOGC)
 
   // Registers no longer containing GC pointers after CORINFO_HELP_ASSIGN_REF and CORINFO_HELP_CHECKED_ASSIGN_REF.
   #define RBM_CALLEE_GCTRASH_WRITEBARRIER       RBM_CALLEE_TRASH_NOGC

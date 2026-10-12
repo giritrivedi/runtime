@@ -4216,7 +4216,76 @@ void CodeGen::instGen_MemoryBarrier(BarrierKind barrierKind)
 
 void CodeGen::genCodeForCpObj(GenTreeBlk* cpObjNode)
 {
-    NYI("genCodeForCpObj for s390x");
+    GenTree*  dstAddr     = cpObjNode->Addr();
+    GenTree*  source      = cpObjNode->Data();
+    var_types srcAddrType = TYP_BYREF;
+    assert(source->isContained());
+    if (source->gtOper == GT_IND)
+    {
+        GenTree* srcAddr = source->gtGetOp1();
+        assert(!srcAddr->isContained());
+        srcAddrType = srcAddr->TypeGet();
+    }
+    else
+    {
+        noway_assert(source->IsLocal());
+    }
+    bool dstOnStack =
+        dstAddr->gtSkipReloadOrCopy()->OperIs(GT_LCL_ADDR) || cpObjNode->GetLayout()->IsStackOnly(compiler);
+#ifdef DEBUG
+    assert(!dstAddr->isContained());
+    assert(cpObjNode->GetLayout()->HasGCPtr());
+#endif
+    genConsumeBlockOp(cpObjNode, REG_WRITE_BARRIER_DST_BYREF, REG_WRITE_BARRIER_SRC_BYREF, REG_NA);
+    gcInfo.gcMarkRegPtrVal(REG_WRITE_BARRIER_SRC_BYREF, srcAddrType);
+    gcInfo.gcMarkRegPtrVal(REG_WRITE_BARRIER_DST_BYREF, dstAddr->TypeGet());
+    ClassLayout* layout = cpObjNode->GetLayout();
+    unsigned     slots  = layout->GetSlotCount();
+    regNumber tmpReg = internalRegisters.Extract(cpObjNode, RBM_ALLINT);
+    assert(genIsValidIntReg(tmpReg));
+    assert(tmpReg != REG_WRITE_BARRIER_SRC_BYREF);
+    assert(tmpReg != REG_WRITE_BARRIER_DST_BYREF);
+    if (cpObjNode->IsVolatile())
+    {
+        instGen_MemoryBarrier();
+    }
+    emitter* emit = GetEmitter();
+    if (dstOnStack)
+    {
+        for (unsigned i = 0; i < slots; i++)
+        {
+            emitAttr attr = emitTypeSize(layout->GetGCPtrType(i));
+            emit->emitIns_R_R_I(INS_lg, attr, tmpReg, REG_WRITE_BARRIER_SRC_BYREF, 0);
+            emit->emitIns_R_I(INS_aghi, EA_8BYTE, REG_WRITE_BARRIER_SRC_BYREF, TARGET_POINTER_SIZE);
+            emit->emitIns_R_R_I(INS_stg, attr, tmpReg, REG_WRITE_BARRIER_DST_BYREF, 0);
+            emit->emitIns_R_I(INS_aghi, EA_8BYTE, REG_WRITE_BARRIER_DST_BYREF, TARGET_POINTER_SIZE);
+        }
+    }
+    else
+    {
+        unsigned gcPtrCount = layout->GetGCPtrCount();
+        for (unsigned i = 0; i < slots; i++)
+        {
+            if (!layout->IsGCPtr(i))
+            {
+                emit->emitIns_R_R_I(INS_lg, EA_8BYTE, tmpReg, REG_WRITE_BARRIER_SRC_BYREF, 0);
+                emit->emitIns_R_I(INS_aghi, EA_8BYTE, REG_WRITE_BARRIER_SRC_BYREF, TARGET_POINTER_SIZE);
+                emit->emitIns_R_R_I(INS_stg, EA_8BYTE, tmpReg, REG_WRITE_BARRIER_DST_BYREF, 0);
+                emit->emitIns_R_I(INS_aghi, EA_8BYTE, REG_WRITE_BARRIER_DST_BYREF, TARGET_POINTER_SIZE);
+            }
+            else
+            {
+                genEmitHelperCall(CORINFO_HELP_ASSIGN_BYREF, 0, EA_PTRSIZE);
+                gcPtrCount--;
+            }
+        }
+        assert(gcPtrCount == 0);
+    }
+    if (cpObjNode->IsVolatile())
+    {
+        instGen_MemoryBarrier(BARRIER_LOAD_ONLY);
+    }
+    gcInfo.gcMarkRegSetNpt(RBM_WRITE_BARRIER_SRC_BYREF | RBM_WRITE_BARRIER_DST_BYREF);
 }
 
 //------------------------------------------------------------------------

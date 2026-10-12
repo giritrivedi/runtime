@@ -1217,6 +1217,7 @@ protected:
                 case INS_sty:
                 case INS_stcy:
                 case INS_lg:
+                case INS_lea:
                 case INS_lay:
                 case INS_ley:
                 case INS_ldy:
@@ -4136,6 +4137,12 @@ inline size_t emitter::emitGetInstrDescSize(const instrDesc* id)
     {
         return SMALL_IDSC_SIZE;
     }
+#if defined(TARGET_S390X)
+    else if (id->idIsLargeCall())
+    {
+        return sizeof(instrDescCGCA);
+    }
+#endif
     else if (id->idIsLargeCns())
     {
 #ifdef TARGET_ARM64
