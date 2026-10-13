@@ -44,7 +44,8 @@ enum ID_OPS
 //   RRF_A  RRF-a   (4 bytes)   R1, R2, R3    (distinct-operands)
 //   RI_A   RI-a    (4 bytes)   R1, I2         (16-bit signed imm)
 //   RIL_A  RIL-a   (6 bytes)   R1, I2         (32-bit signed imm)
-//   RIL_B  RIL-b   (6 bytes)   R1, RI2        (PC-relative call)
+//   RIL_B       RIL-b (6 bytes) R1, RI2       (PC-relative, non-call: larl, lgrl)
+//   RIL_B_CALL  RIL-b (6 bytes) R1, RI2       (PC-relative call: brasl)
 //   RI_C   RI-c    (4 bytes)   M1, RI2        (16-bit PC-rel branch)
 //   RIL_C  RIL-c   (6 bytes)   M1, RI2        (32-bit PC-rel branch)
 //   RX_A   RX-a    (4 bytes)   R1, D2(X2,B2)  (12-bit unsigned disp ld/st)
@@ -58,7 +59,8 @@ IF_DEF(RRE,   IS_NONE, NONE)  // RRE   R1, R2              e.g.  lgr, agr, sgr, 
 IF_DEF(RRF_A, IS_NONE, NONE)  // RRF-a R1, R2, R3          e.g.  ark, agrk, srk, sgrk
 IF_DEF(RI_A,  IS_NONE, NONE)  // RI-a  R1, I2(16-bit)      e.g.  ahi, aghi, lghi, chi
 IF_DEF(RIL_A, IS_NONE, NONE)  // RIL-a R1, I2(32-bit)      e.g.  lgfi, agfi, iilf, iihf
-IF_DEF(RIL_B, IS_NONE, CALL)  // RIL-b R1, RI2              e.g.  brasl r14, <target>
+IF_DEF(RIL_B_CALL, IS_NONE, CALL)  // RIL-b R1, RI2              e.g.  brasl r14, <target>
+IF_DEF(RIL_B,      IS_NONE, NONE)  // RIL-b R1, RI2          e.g.  larl, lgrl (no call)
 IF_DEF(RI_C,  IS_NONE, JMP)   // RI-c  M1, RI2 (16-bit)    e.g.  brc mask, label
 IF_DEF(RIL_C, IS_NONE, JMP)   // RIL-c M1, RI2 (32-bit)    e.g.  brcl mask, label
 IF_DEF(RX_A,  IS_NONE, NONE)  // RX-a  R1, D2(X2,B2)       e.g.  l, st, stc, sth (12-bit disp)

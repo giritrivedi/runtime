@@ -1426,6 +1426,17 @@ const char* emitter::emitRegName(regNumber reg, emitAttr size, bool varName) con
             rn = bRegNames[reg - REG_V0];
         }
     }
+#if defined(TARGET_S390X)
+    else if (size == EA_1BYTE || size == EA_2BYTE)
+    {
+        // s390x GPRs (r0-r15) have no byte/halfword sub-register name variants.
+        // The sub-word operand width is encoded in instruction mnemonic
+        // (e.g. llgcr=zero-extend byte, llghr=zero-extend halfword)
+        // dispIns passes id->idOpSize() which records the source operand width
+        // For Display Helper the register name is always the full 64-bit form.
+        rn = xRegNames[reg];
+    }
+#endif // TARGET_S390X
 
     assert(rn != nullptr);
 
@@ -8637,8 +8648,8 @@ void emitter::emitIns_Call(EmitCallType          callType,
                            INDEBUG_LDISASM_COMMA(CORINFO_SIG_INFO* sigInfo)
                            void*                 addr,
                            ssize_t               argSize,
-                           emitAttr              retSize,
-                           emitAttr              secondRetSize,
+                           emitAttr              retSize
+                               MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(emitAttr secondRetSize),
                            VARSET_VALARG_TP      ptrVars,
                            regMaskTP             gcrefRegs,
                            regMaskTP             byrefRegs,
@@ -8654,7 +8665,8 @@ void emitter::emitIns_Call(EmitCallType          callType,
 
     // Create instruction descriptor for call
     instrDesc* id = emitNewInstrCallDir(argSize, ptrVars, gcrefRegs,
-		                        byrefRegs, retSize, secondRetSize);
+                                        byrefRegs, retSize
+                                            MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(secondRetSize));
 
     // Set instruction based on call type
     instruction ins;
@@ -8670,7 +8682,7 @@ void emitter::emitIns_Call(EmitCallType          callType,
             // Set target address
             id->idAddr()->iiaAddr = (BYTE*)addr;
             id->idSetIsDspReloc();
-            id->idInsFmt(IF_RIL_B);
+            id->idInsFmt(IF_RIL_B_CALL);
             break;
 
         case EC_INDIR_R:
@@ -10108,7 +10120,8 @@ unsigned emitter::emitOutputCall(insGroup* ig, BYTE* dst, instrDesc* id, code_t 
         byrefRegs |= RBM_INTRET;
     }
 
-    // If is a multi-register return method is called, mark INTRET_1 (X1) appropriately
+#if MULTIREG_HAS_SECOND_GC_RET
+    // If a multi-register return method is called, mark INTRET_1 appropriately
     if (id->idIsLargeCall())
     {
         instrDescCGCA* idCall = (instrDescCGCA*)id;
@@ -10121,6 +10134,7 @@ unsigned emitter::emitOutputCall(insGroup* ig, BYTE* dst, instrDesc* id, code_t 
             byrefRegs |= RBM_INTRET_1;
         }
     }
+#endif // MULTIREG_HAS_SECOND_GC_RET
 
     // If the GC register set has changed, report the new set.
     if (gcrefRegs != emitThisGCrefRegs)
@@ -13236,10 +13250,14 @@ void emitter::emitDispInsHelp(
         // --------------------------------------------------------------
         // RRE (4 bytes)  R1, R2
         //   e.g.  lgr r1, r2 / agr r1, r2 / sgr r1, r2 / lcgr r1, r2
+        //         llgcr r1, r2 (size=EA_1BYTE: source width hint, not a sub-reg)
+        //         llghr r1, r2 (size=EA_2BYTE: source width hint, not a sub-reg)
         // --------------------------------------------------------------
         case IF_RRE:
-            emitDispReg(id->idReg1(), size, true);
-            emitDispReg(id->idReg2(), size, false);
+            // GPRs on s390x have no byte/halfword sub-register names
+            // display the 64-bit register name regardless of source operand width.
+            emitDispReg(id->idReg1(), EA_8BYTE, true);
+            emitDispReg(id->idReg2(), EA_8BYTE, false);
             break;
 
         // --------------------------------------------------------------
@@ -13275,6 +13293,7 @@ void emitter::emitDispInsHelp(
         //   e.g.  brasl r14, <reloc-or-label>
         // --------------------------------------------------------------
         case IF_RIL_B:
+	case IF_RIL_B_CALL:
             emitDispReg(id->idReg1(), EA_8BYTE, true);
             if (id->idIsDspReloc())
             {
