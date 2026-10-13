@@ -7395,12 +7395,18 @@ int Compiler::lvaAllocateTemps(int stkOffs, bool mustDoubleAlign)
                 // aligned). Note stkOffs is always negative, so (stkOffs % TARGET_POINTER_SIZE) yields a negative
                 // value.
                 //
+#if defined(TARGET_S390X)
+                int alignPad = (int)AlignmentPad((unsigned)stkOffs, TARGET_POINTER_SIZE);
+#else
                 int alignPad = (int)AlignmentPad((unsigned)-stkOffs, TARGET_POINTER_SIZE);
-
+#endif
                 spillTempSize += alignPad;
                 lvaIncrementFrameSize(alignPad);
+#if defined(TARGET_S390X)
+                stkOffs += alignPad;
+#else
                 stkOffs -= alignPad;
-
+#endif
                 noway_assert((stkOffs % TARGET_POINTER_SIZE) == 0);
             }
 #endif
@@ -7421,8 +7427,13 @@ int Compiler::lvaAllocateTemps(int stkOffs, bool mustDoubleAlign)
 
             spillTempSize += size;
             lvaIncrementFrameSize(size);
+#if defined(TARGET_S390X)
+            temp->tdSetTempOffs(stkOffs);
+            stkOffs += size;
+#else
             stkOffs -= size;
             temp->tdSetTempOffs(stkOffs);
+#endif
         }
 #ifdef TARGET_ARM
         // Only required for the ARM platform that we have an accurate estimate for the spillTempSize
