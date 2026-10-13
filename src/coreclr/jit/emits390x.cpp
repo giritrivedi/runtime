@@ -10814,7 +10814,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srlg:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id) & 0x3f;
-            S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_R0, imm & 0x3f);
+            S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), 0, imm & 0x3f);
             break;
 
         case INS_llgf:
