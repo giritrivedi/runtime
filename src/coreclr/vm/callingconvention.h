@@ -2089,6 +2089,12 @@ void ArgIteratorTemplate<ARGITERATOR_BASE>::ComputeReturnFlags()
                  strcmp(typeName, "NFloat") == 0))
                 break;
         }
+	else
+	{
+            size_t size = thValueType.GetSize();
+            if ( size <= sizeof(void *) && (size & ( size -1 )) == 0 )
+	        break;
+        }
 #endif
 
         // Value types are returned using return buffer by default

@@ -12553,7 +12553,6 @@ static bool isJitted(MethodDesc* ftnDesc, const char* ftnName)
             "IsAscii",
             "IndexOfAnyChar",
             "IndexOfAnyValueType",
-            "GetTitle",
             "op_Inequality",
             "WriteLineIf",
             "TryGetCachedCursorPosition",
