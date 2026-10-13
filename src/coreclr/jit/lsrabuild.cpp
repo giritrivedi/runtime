@@ -860,7 +860,7 @@ regMaskTP LinearScan::getKillSetForCall(GenTreeCall* call)
 #endif // TARGET_ARM64
 #endif // TARGET_XARCH
     }
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM) || defined(TARGET_S390X)
     if (call->IsVirtualStub())
     {
         killMask.AddGprRegs(compiler->virtualStubParamInfo->GetRegMask().GetIntRegSet());

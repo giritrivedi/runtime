@@ -2938,7 +2938,10 @@ void CodeGen::genCall(GenTreeCall* call)
     {
         case CT_USER_FUNC:
         {
-            callAddr = call->gtDirectCallAddress;
+            if (call->gtControlExpr == nullptr)
+            {
+                callAddr = call->gtDirectCallAddress;
+            }
             break;
         }
 
@@ -2951,11 +2954,7 @@ void CodeGen::genCall(GenTreeCall* call)
         }
         case CT_INDIRECT:
         {
-            if (call->gtCallAddr == nullptr)
-            {
-                // Call through register already set up
-                callReg = REG_R1;
-            }
+            assert(call->gtCallAddr != nullptr);
             break;
         }
 
@@ -3009,7 +3008,12 @@ void CodeGen::genCall(GenTreeCall* call)
             genPutArgStk(argNode, stackOffset);
         }
     }
-
+    // TODO: storing the indirection cell address from (currently) R10 to stack(hardcoded to 8th slot as per the vm stubs).
+    //Hardcoding R10 can be replaced with a temp register allocated by lsra at a later point in time.
+    if (call->IsVirtualStub())
+    {
+        GetEmitter()->emitIns_R_R_I(INS_stg, EA_PTRSIZE, compiler->virtualStubParamInfo->GetReg(), REG_SPBASE, 8);
+    }
 
     regMaskTP gcrefRegs = gcInfo.gcRegGCrefSetCur;
     regMaskTP byrefRegs = gcInfo.gcRegByrefSetCur;
