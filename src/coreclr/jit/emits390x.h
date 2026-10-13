@@ -1765,7 +1765,7 @@ void emitIns_C(instruction ins, emitAttr attr, CORINFO_FIELD_HANDLE fdlHnd, int 
 // Emit SS-format instruction: opc(8)|L(8)|B1(4)|D1(12)|B2(4)|D2(12)
 // Used for storage-to-storage operations like XC (zero memory by XOR-with-self).
 // len: bytes to operate on (1..256), baseReg: base register, disp: 12-bit displacement.
-void emitIns_SS(instruction ins, int len, regNumber baseReg, int disp);
+void emitIns_SS(instruction ins, int len, regNumber baseReg1, int disp1, regNumber baseReg2, int disp2);
 
 void emitIns_S(instruction ins, emitAttr attr, int varx, int offs);
 

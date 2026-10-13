@@ -6145,7 +6145,7 @@ void CodeGen::genZeroInitFrameUsingBlockInit(int untrLclHi, int untrLclLo, regNu
          int remaining = untrLclHi - offset;
          int chunkLen  = (remaining > 256) ? 256 : remaining;
          assert(offset >= 0 && offset <= 4095); // 12-bit displacement
-         GetEmitter()->emitIns_SS(INS_xc, chunkLen, frameReg, offset);
+         GetEmitter()->emitIns_SS(INS_xc, chunkLen, frameReg, offset, frameReg, offset);
          offset += chunkLen;
      }
 

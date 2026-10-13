@@ -5508,19 +5508,22 @@ void emitter::emitIns_R_R_Imm(instruction ins, emitAttr attr, regNumber reg1, re
   *    disp    - 12-bit unsigned displacement (0..4095)
   */
 
- void emitter::emitIns_SS(instruction ins, int len, regNumber baseReg, int disp)
+ void emitter::emitIns_SS(instruction ins, int len, regNumber baseReg1, int disp1, regNumber baseReg2, int disp2)
  {
      assert(len >= 1 && len <= 256);
-     assert(disp >= 0 && disp <= 4095);
+     assert(disp1 >= 0 && disp1 <= 4095);
+     assert(disp2 >= 0 && disp2 <= 4095);
+     assert(isGeneralRegister(baseReg1));
+     assert(isGeneralRegister(baseReg2));
      assert(ins == INS_xc);
 
      // Pack: high 16 bits = L (len-1), low 16 bits = disp
-     ssize_t packed = (ssize_t)(((len - 1) << 16) | (disp & 0xfff));
+     ssize_t packed = ((ssize_t)(len - 1) << 24) | (((ssize_t)disp1 & 0xfff) << 12) | ((ssize_t)disp2 & 0xfff);
      instrDesc* id = emitNewInstrCns(EA_PTRSIZE, packed);
      id->idIns(ins);
      id->idInsFmt(IF_NONE);
-     id->idReg1(baseReg);  // B1 = B2 = baseReg (only one register needed)
-     id->idReg2(REG_NA);
+     id->idReg1(baseReg1);  // B1 = B2 = baseReg (only one register needed)
+     id->idReg2(baseReg2);
 
      dispIns(id);
      appendToCurIG(id);
@@ -10947,14 +10950,16 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
            dst += emitOutputWord(dst, op);
            break;
 
-	case INS_xc:
+        case INS_xc:
          {
              imm    = emitGetInsSC(id);
              op     = emitInsCode(ins, fmt);
-             int L  = (int)((imm >> 16) & 0xff);   // len-1
-             int b1 = (int)id->idReg1();            // base register
-             int d1 = (int)(imm & 0xfff);          // displacement
-             S390_SS_a(dst, op, L, b1, d1, b1, d1);
+             int L  = (int)((imm >> 24) & 0xff);   // len-1
+             int d1 = (int)((imm >> 12) & 0xfff);   // 12-bit displacement 1
+             int d2 = (int)(imm & 0xfff);           // 12-bit displacement 2
+             int b1 = (int)id->idReg1();            // base register 1
+             int b2 = (int)id->idReg2();
+             S390_SS_a(dst, op, L, b1, d1, b2, d2);
              break;
          }
 
