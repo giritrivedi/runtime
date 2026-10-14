@@ -59,10 +59,11 @@ bool Lowering::IsContainableImmed(GenTree* parentNode, GenTree* childNode) const
     if (parentNode->OperIsCompare())
     {
         ssize_t val = childNode->AsIntCon()->gtIconVal;
-        if (val >= INT32_MIN && val <= INT32_MAX)
-            return true;
-        if (val >= 0 && (uint64_t)val <= UINT32_MAX)
-            return true;
+        if ((parentNode->gtFlags & GTF_UNSIGNED) != 0)
+        {
+           return (val >= 0) && ((uint64_t)val <= UINT32_MAX);
+	}
+	return (val >= INT32_MIN) && (val <= INT32_MAX);
     }
     return false;
 #if 0
