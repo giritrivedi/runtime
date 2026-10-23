@@ -7534,7 +7534,7 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
     int     disp = base + offs;
     ssize_t imm  = disp;
 
-    regNumber reg2 = REG_SPBASE;//encodingSPtoZR(FPbased ? REG_FPBASE : REG_SPBASE);
+    regNumber reg2 = FPbased ? REG_FPBASE : REG_SPBASE;
 
     // TODO-ARM64-CQ: use unscaled loads?
     /* Figure out the encoding format of the instruction */
@@ -7815,7 +7815,7 @@ void emitter::emitIns_S_R(instruction ins, emitAttr attr, regNumber reg1, int va
     ssize_t imm  = disp;
 
     // TODO-ARM64-CQ: with compLocallocUsed, should we use REG_SAVED_LOCALLOC_SP instead?
-    regNumber reg2 = REG_SPBASE;//encodingSPtoZR(FPbased ? REG_FPBASE : REG_SPBASE);
+    regNumber reg2 = FPbased ? REG_FPBASE : REG_SPBASE;
 
     // TODO-ARM64-CQ: use unscaled loads?
     /* Figure out the encoding format of the instruction */
