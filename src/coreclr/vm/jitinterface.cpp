@@ -12503,6 +12503,7 @@ static bool isJitted(MethodDesc* ftnDesc, const char* ftnName)
         "GetParameters",
         "GetPointerToFirstInvalidChar",
         "GetSpanDataFrom",
+        "Enum",
             "CreateCacheableTask",
             "get_CompletedTask",
             "ToCharArray",
