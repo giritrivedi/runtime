@@ -90,6 +90,9 @@ size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
     if (emitIsSmallInsDsc(id))
         return SMALL_IDSC_SIZE;
 
+    if (id->idIsLargeCall())
+        return sizeof(instrDescCGCA);
+
 	//return sizeof(instrDesc);
     assert((unsigned)id->idInsFmt() < emitFmtCount);
 
@@ -7569,6 +7572,10 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
             isLdrStr = true;
             break;
 
+        case INS_lea:
+            ins = INS_lay;
+            FALLTHROUGH;
+
         case INS_lay:
             assert(size == EA_8BYTE);
             isSimple = false;
@@ -10330,6 +10337,8 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             break;
 
         case INS_chi:
+        case INS_aghi:
+        case INS_lghi:
             imm = emitGetInsSC(id);
             assert(isValidSimm<16>(imm));
             op = emitInsCode(ins, fmt);

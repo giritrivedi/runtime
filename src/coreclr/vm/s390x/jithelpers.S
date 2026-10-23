@@ -64,8 +64,11 @@ LEAF_END JIT_PatchedCodeLast, _TEXT
 // Exit:
 //   RDI, RSI are incremented by SIZEOF(LPVOID)
 LEAF_ENTRY JIT_ByRefWriteBarrier, _TEXT
-// NOT YET IMPLEMENTED
-.long 0x33
+        lg      %r0, 0(%r3)
+        stg     %r0, 0(%r2)
+        aghi    %r3, 8
+        aghi    %r2, 8
+        br      %r14
 LEAF_END_MARKED JIT_ByRefWriteBarrier, _TEXT
 
 // ------------------------------------------------------------------
