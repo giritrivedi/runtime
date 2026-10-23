@@ -12503,6 +12503,7 @@ static bool isJitted(MethodDesc* ftnDesc, const char* ftnName)
         "GetParameters",
         "GetPointerToFirstInvalidChar",
         "GetSpanDataFrom",
+        "TranscodeToUtf8",
             "CreateCacheableTask",
             "get_CompletedTask",
             "ToCharArray",

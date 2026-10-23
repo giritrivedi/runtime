@@ -407,8 +407,16 @@ void CodeGen::genCodeForLclVar(GenTreeLclVar* tree)
         instruction ins  = ins_Load(targetType);
         emitAttr    attr = emitActualTypeSize(targetType);
 
+        // s390x is big-endian: when a wider local is read as a narrower type (e.g. a LONG local
+        // narrowed to INT by optNarrowTree), the low-order bytes are at the end of the slot.
+        unsigned offs = 0;
+        if ((varDsc->TypeGet() != TYP_STRUCT) && (genTypeSize(targetType) < genTypeSize(varDsc->TypeGet())))
+        {
+            offs = genTypeSize(varDsc->TypeGet()) - genTypeSize(targetType);
+        }
+
         emitter* emit = GetEmitter();
-        emit->emitIns_R_S(ins, attr, tree->GetRegNum(), varNum, 0);
+        emit->emitIns_R_S(ins, attr, tree->GetRegNum(), varNum, offs);
         genProduceReg(tree);
     }
 }
@@ -4471,11 +4479,13 @@ void CodeGen::genCodeForCompare(GenTreeOp* tree)
             case GT_GE: branchIns = INS_bge; break;
             default: unreached();
         }
+        BasicBlock* skipLabel = genCreateTempLabel();
         GetEmitter()->emitIns_R_I(INS_lgfi, EA_4BYTE, targetReg, 1, INS_OPTS_NONE,
                                   INS_SCALABLE_OPTS_NONE DEBUGARG(0) DEBUGARG(GTF_EMPTY));
-        GetEmitter()->emitIns_J(branchIns, nullptr, 1);
+        GetEmitter()->emitIns_J(branchIns, skipLabel);
         GetEmitter()->emitIns_R_I(INS_lgfi, EA_4BYTE, targetReg, 0, INS_OPTS_NONE,
                                   INS_SCALABLE_OPTS_NONE DEBUGARG(0) DEBUGARG(GTF_EMPTY));
+        genDefineInlineTempLabel(skipLabel);
         genProduceReg(tree);
     }
 }
