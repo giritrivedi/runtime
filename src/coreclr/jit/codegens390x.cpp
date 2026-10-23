@@ -2850,19 +2850,14 @@ void CodeGen::genCodeForMemmove(GenTreeBlk* tree)
 //
 void CodeGen::genCodeForInitBlkLoop(GenTreeBlk* initBlkNode)
 {
-    _ASSERTE(!"NYI");
-/*
+
     GenTree* const dstNode = initBlkNode->Addr();
     genConsumeReg(dstNode);
     const regNumber dstReg = dstNode->GetRegNum();
 
-#ifndef TARGET_ARM64
     GenTree* const zeroNode = initBlkNode->Data();
     genConsumeReg(zeroNode);
     const regNumber zeroReg = zeroNode->GetRegNum();
-#else
-    const regNumber zeroReg = REG_ZR;
-#endif
 
     if (initBlkNode->IsVolatile())
     {
@@ -2870,43 +2865,42 @@ void CodeGen::genCodeForInitBlkLoop(GenTreeBlk* initBlkNode)
         instGen_MemoryBarrier();
     }
 
-    //  str     xzr, [dstReg]
-    //  mov     offsetReg, <block size>
-    //.LOOP:
-    //  str     xzr, [dstReg, offsetReg]
-    //  subs    offsetReg, offsetReg, #8
-    //  bne     .LOOP
-
     const unsigned size = initBlkNode->GetLayout()->GetSize();
     assert((size >= TARGET_POINTER_SIZE) && ((size % TARGET_POINTER_SIZE) == 0));
 
-    // The loop is reversed - it makes it smaller.
-    // Although, we zero the first pointer before the loop (the loop doesn't zero it)
-    // it works as a nullcheck, otherwise the first iteration would try to access
-    // "null + potentially large offset" and hit AV.
-    GetEmitter()->emitIns_R_R(INS_str, EA_PTRSIZE, zeroReg, dstReg);
+    // s390x has no architectural zero register, so explicitly initialize
+    // the register assigned to the Data node.
+    GetEmitter()->emitIns_R_I(INS_lghi, EA_PTRSIZE, zeroReg, 0);
+
+    // Zero the first pointer-sized block. This also acts as a null check.
+    GetEmitter()->emitIns_R_R_I(INS_stg, EA_PTRSIZE, zeroReg, dstReg, 0);
+
     if (size > TARGET_POINTER_SIZE)
     {
         // Extend liveness of dstReg in case if it gets killed by the store.
         gcInfo.gcMarkRegPtrVal(dstReg, dstNode->TypeGet());
 
-        const regNumber offsetReg = internalRegisters.GetSingle(initBlkNode);
-        instGen_Set_Reg_To_Imm(EA_PTRSIZE, offsetReg, size - TARGET_POINTER_SIZE);
+        const regNumber tempReg = internalRegisters.GetSingle(initBlkNode);
+
+        // Initialize tempReg to the address of the last pointer-sized block.
+        instGen_Set_Reg_To_Imm(EA_PTRSIZE, tempReg, size - TARGET_POINTER_SIZE);
+        GetEmitter()->emitIns_R_R_R(INS_agrk, EA_PTRSIZE, tempReg, dstReg, tempReg);
 
         BasicBlock* loop = genCreateTempLabel();
         genDefineTempLabel(loop);
 
-        GetEmitter()->emitIns_R_R_R(INS_str, EA_PTRSIZE, zeroReg, dstReg, offsetReg);
-#ifdef TARGET_ARM64
-        GetEmitter()->emitIns_R_R_I(INS_subs, EA_PTRSIZE, offsetReg, offsetReg, TARGET_POINTER_SIZE);
-#else
-        GetEmitter()->emitIns_R_R_I(INS_sub, EA_PTRSIZE, offsetReg, offsetReg, TARGET_POINTER_SIZE, INS_FLAGS_SET);
-#endif
+        // Zero the current pointer-sized block.
+        GetEmitter()->emitIns_R_R_I(INS_stg, EA_PTRSIZE, zeroReg, tempReg, 0);
+
+        // Move backwards by one pointer.
+        GetEmitter()->emitIns_R_I(INS_aghi, EA_PTRSIZE, tempReg, -TARGET_POINTER_SIZE);
+
+        // Stop after reaching the destination address.
+        GetEmitter()->emitIns_R_R(INS_cgr, EA_PTRSIZE, tempReg, dstReg);
         inst_JMP(EJ_ne, loop);
 
         gcInfo.gcMarkRegSetNpt(genRegMask(dstReg));
     }
-*/
 }
 
 
