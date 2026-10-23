@@ -571,9 +571,9 @@ void CodeGen::genCodeForTreeNode(GenTree* treeNode)
 #endif // PROFILING_SUPPORTED
             break;
 
-//        case GT_LCLHEAP:
-//            genLclHeap(treeNode);
-//            break;
+        case GT_LCLHEAP:
+            genLclHeap(treeNode);
+            break;
 
         case GT_CNS_INT:
         case GT_CNS_DBL:
@@ -5183,7 +5183,8 @@ void CodeGen::genFnEpilog(BasicBlock* block)
         }
 #else  // TARGET_ARM64
 	int totalFrameSize = genTotalFrameSize();
-	GetEmitter()->emitIns_R_R_R_I(INS_lmg, EA_PTRSIZE, REG_FP, REG_SP, REG_SPBASE, totalFrameSize + 88);
+        regNumber lmgBase = compiler->compLocallocUsed ? REG_FPBASE : REG_SPBASE;
+        GetEmitter()->emitIns_R_R_R_I(INS_lmg, EA_PTRSIZE, REG_FP, REG_SP, lmgBase, totalFrameSize + 88);
         inst_RV(INS_ret, REG_LR, TYP_I_IMPL);
         compiler->unwindReturn(REG_LR);
 #endif // TARGET_ARM64
@@ -5862,6 +5863,73 @@ void CodeGen::genZeroInitFrame(unsigned frameSize, regNumber initReg, bool* pIni
     {
         *pInitRegZeroed = (initReg == rZero);
     }
+}
+//-----------------------------------------------------------------------------
+// genLclHeap: Dynamic memory allocation on stack frame
+//
+// Moves r15 down by (aligned size + RSA + outgoing arg area) and
+// returns the address just above the save/outgoing area, so calls made after the
+// localloc cannot overwrite the buffer. The back-chain is copied to the new r15.
+//
+void CodeGen::genLclHeap(GenTree* tree)
+{
+    assert(tree->OperIs(GT_LCLHEAP));
+    assert(compiler->compLocallocUsed);
+
+    GenTree*  size      = tree->AsOp()->gtOp1;
+    emitter*  emit      = GetEmitter();
+    regNumber targetReg = tree->GetRegNum();
+
+    if (compiler->info.compInitMem)
+    {
+        // TODO: Have to handle zeroing of memory
+    }
+
+    const ssize_t frameBelow = S390X_REG_SAVE_AREA_SIZE + (ssize_t)compiler->lvaOutgoingArgSpaceSize;
+
+    if (size->IsCnsIntOrI())
+    {
+        assert(size->isContained());
+        size_t amount = size->AsIntCon()->gtIconVal;
+
+        if (amount == 0)
+        {
+            emit->emitIns_R_I(INS_lgfi, EA_8BYTE, targetReg, 0);
+            genProduceReg(tree);
+            return;
+        }
+
+        ssize_t total = (ssize_t)AlignUp(amount, STACK_ALIGN) + frameBelow;
+        if (total > 0x7FFFF)
+        {
+            // TODO: Have to handle the overflow  
+        }
+
+        regNumber tmpReg = internalRegisters.GetSingle(tree);
+
+        emit->emitIns_R_R_I(INS_lg, EA_8BYTE, tmpReg, REG_SPBASE, 0);
+        emit->emitIns_R_R_I(INS_lay, EA_PTRSIZE, REG_SPBASE, REG_SPBASE, -total);
+        emit->emitIns_R_R_I(INS_stg, EA_8BYTE, tmpReg, REG_SPBASE, 0);
+        emit->emitIns_R_R_I(INS_lay, EA_PTRSIZE, targetReg, REG_SPBASE, frameBelow);
+    }
+    else
+    {
+        regNumber sizeReg    = genConsumeReg(size);
+        regNumber alignedReg = internalRegisters.Extract(tree);
+        regNumber tmpReg     = internalRegisters.Extract(tree);
+
+        // alignedReg = ((size + 7) & -8) + frameBelow
+        emit->emitIns_R_R(INS_lgr, EA_8BYTE, alignedReg, sizeReg);
+        emit->emitIns_R_R(INS_ngr, EA_8BYTE, alignedReg, tmpReg);
+        emit->emitIns_R_R_I(INS_agfi, EA_8BYTE, alignedReg, alignedReg, frameBelow);
+
+        emit->emitIns_R_R_I(INS_lg, EA_8BYTE, tmpReg, REG_SPBASE, 0);
+        emit->emitIns_R_R(INS_sgr, EA_8BYTE, REG_SPBASE, alignedReg);
+        emit->emitIns_R_R_I(INS_stg, EA_8BYTE, tmpReg, REG_SPBASE, 0);
+        emit->emitIns_R_R_I(INS_lay, EA_PTRSIZE, targetReg, REG_SPBASE, frameBelow);
+    }
+
+    genProduceReg(tree);
 }
 //-----------------------------------------------------------------------------
 // genAllocLclFrame: Allocate the local stack frame for s390x architecture
