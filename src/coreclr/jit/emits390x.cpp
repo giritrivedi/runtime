@@ -7701,6 +7701,35 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
 
 /*****************************************************************************
  *
+ *  Add an RSY-format instruction referencing two registers and a displacement / base register.
+ *  Encodes RSY-a format shift/rotate instructions (e.g. srlg, sllg, srag, rllg) where:
+ *    - reg1: Destination register (R1)
+ *    - reg2: Source register (R3)
+ *    - varx: Shift count register number (B2), or 0 for REG_R0 (immediate shift)
+ *    - offs: 20-bit signed displacement / immediate shift amount (D2)
+ */
+void emitter::emitIns_R_R_S(
+    instruction ins, emitAttr attr, regNumber reg1, regNumber reg2, int varx, int offs)
+{
+    assert(isGeneralRegister(reg1));
+    assert(isGeneralRegister(reg2));
+
+    // For RSY shift/rotate operations (srlg, sllg, srag, rllg), varx is not a stack slot (0 or -1),
+    // and offs carries the displacement/shift amount.
+    instrDesc* id = emitNewInstrCns(attr, offs);
+    id->idIns(ins);
+    id->idInsFmt(IF_NONE);
+    id->idReg1(reg1);
+    id->idReg2(reg2);
+    // If varx is used to pass a register number or 0 for REG_R0:
+    id->idReg3(varx != 0 ? (regNumber)varx : REG_R0);
+
+    dispIns(id);
+    appendToCurIG(id);
+}
+
+/*****************************************************************************
+ *
  *  Add an instruction referencing two register and consecutive stack-based local variable slots.
  */
 void emitter::emitIns_R_R_S_S(
@@ -10758,8 +10787,16 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srak:
         case INS_srag:
             op = emitInsCode(ins, fmt);
-            imm = emitGetInsSC(id);
-            S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_NA, imm & 0x3f);
+            imm = emitGetInsSC(id) & 0x3f;
+            if (!id->idIsSmallDsc())
+            {
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
+            }
+            else
+            {
+                // constant count: B2 = r0, D2 = imm
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_R0, imm);
+            }
             break;
 
         case INS_sllk:
@@ -10867,7 +10904,15 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srlg:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id) & 0x3f;
-            S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_NA, imm & 0x3f);
+            if (!id->idIsSmallDsc())
+            {
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
+            }
+            else
+            {
+                // constant count: B2 = r0, D2 = imm
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_R0, imm);
+            }
             break;
 
         case INS_llgf:

@@ -1564,13 +1564,14 @@ void CodeGen::genCodeForShift(GenTree* tree)
     GenTree* shiftBy = tree->gtGetOp2();
     if (!shiftBy->IsCnsIntOrI())
     {
-        GetEmitter()->emitIns_R_R_R(ins, size, dstReg, operand->GetRegNum(), shiftBy->GetRegNum());
+        // Variable shift: R1=dstReg, R3=srcReg, B2=shiftReg, D2=0
+        GetEmitter()->emitIns_R_R_S(ins, size, dstReg, operand->GetRegNum(), (int)shiftBy->GetRegNum(), 0);
     }
     else
     {
         unsigned immWidth   = emitter::getBitWidth(size); // For ARM64, immWidth will be set to 32 or 64
         unsigned shiftByImm = (unsigned)shiftBy->AsIntCon()->gtIconVal & (immWidth - 1);
-        GetEmitter()->emitIns_R_R_I(ins, size, dstReg, operand->GetRegNum(), shiftByImm);
+        GetEmitter()->emitIns_R_R_S(ins, size, dstReg, operand->GetRegNum(), 0, shiftByImm);
     }
 
     genProduceReg(tree);
