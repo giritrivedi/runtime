@@ -10769,7 +10769,8 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_R0, imm & 0x3f);
             break;
 
-        case INS_nihf:
+        case INS_nilf:
+	case INS_nihf:
             imm = emitGetInsSC(id);
             assert(isValidUimm<32>(imm));
             op = emitInsCode(ins, fmt);
