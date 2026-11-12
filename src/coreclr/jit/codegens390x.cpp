@@ -4469,6 +4469,17 @@ void CodeGen::genCodeForBinary(GenTreeOp* treeNode)
             emit->emitIns_R_R(INS_lgr, EA_PTRSIZE, targetReg, op1->GetRegNum());
         regNumber r = emit->emitInsBinary(ins, emitTypeSize(treeNode), treeNode, op2);
         assert(r == targetReg);
+
+        // For a 64-bit AND with a 32-bit immediate
+        if (treeNode->OperIs(GT_AND) && ((emitTypeSize(treeNode) == EA_8BYTE) || (emitTypeSize(treeNode) == EA_BYREF)))
+        {
+            uint64_t uimm = static_cast<uint64_t>(op2->AsIntConCommon()->IconValue());
+            uint32_t h32 = static_cast<uint32_t>(uimm >> 32);
+            if (h32 != 0xFFFFFFFFU)
+            {
+                emit->emitIns_R_I(INS_nihf, EA_8BYTE, targetReg, h32);
+            }
+        }
     }
     else
     {
@@ -4727,7 +4738,7 @@ instruction CodeGen::genGetInsForOper(GenTree* treeNode)
             isImm = isImmed(treeNode);
             if (isImm)
             {
-                ins = INS_nihf;
+                ins = INS_nilf;
             }
             else
             {
