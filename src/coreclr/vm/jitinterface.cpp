@@ -12981,6 +12981,7 @@ static bool isJitted(MethodDesc* ftnDesc, const char* ftnName)
         "GetByteCountCommon",
         "AllCharsInUInt64AreAscii",
         "NonPackedIndexOfValueType",
+        "AsBytes",
     };
 
     // 2D array for class name and function name combinations to exclude from JIT compilation
