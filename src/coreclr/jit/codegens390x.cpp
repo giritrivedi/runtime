@@ -3105,8 +3105,7 @@ void CodeGen::genCall(GenTreeCall* call)
             INDEBUG_LDISASM_COMMA(nullptr)
             callAddr,
             argSize,
-            retSize,
-            EA_UNKNOWN,
+            retSize        MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(EA_UNKNOWN),
             gcInfo.gcVarPtrSetCur,
             gcrefRegs,
             byrefRegs,
@@ -5250,10 +5249,8 @@ void CodeGen::genFnEpilog(BasicBlock* block)
                                        INDEBUG_LDISASM_COMMA(nullptr)
                                        addr,
                                        0,          // argSize
-                                       EA_UNKNOWN, // retSize
-#if defined(TARGET_ARM64)
-                                       EA_UNKNOWN, // secondRetSize
-#endif
+                                       EA_UNKNOWN  // retSize
+                                           MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(EA_UNKNOWN), // secondRetSize
                                        gcInfo.gcVarPtrSetCur,
                                        gcInfo.gcRegGCrefSetCur,
                                        gcInfo.gcRegByrefSetCur,
@@ -6417,7 +6414,7 @@ void CodeGen::genEmitHelperCall(unsigned helper, int argSize, emitAttr retSize, 
     }
 
     GetEmitter()->emitIns_Call(callType, compiler->eeFindHelper(helper), INDEBUG_LDISASM_COMMA(nullptr) addr, argSize,
-                               retSize, EA_UNKNOWN, gcInfo.gcVarPtrSetCur, gcInfo.gcRegGCrefSetCur,
+                               retSize MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(EA_UNKNOWN), gcInfo.gcVarPtrSetCur, gcInfo.gcRegGCrefSetCur,
                                gcInfo.gcRegByrefSetCur, DebugInfo(), callTarget, /* ireg */
                                REG_NA, 0, 0,                                     /* xreg, xmul, disp */
                                false                                             /* isJump */
