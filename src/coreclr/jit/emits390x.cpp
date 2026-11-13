@@ -15386,25 +15386,12 @@ bool emitter::IsMovInstruction(instruction ins)
 bool emitter::IsRedundantMov(instruction ins, emitAttr size, regNumber dst, regNumber src, bool canSkip)
 {
     assert(IsMovInstruction(ins));
-    if (canSkip && (dst == src))
+    if (dst != src)
     {
-        // These elisions used to be explicit even when optimizations were disabled
-        return true;
-    }
-
-    if (!emitComp->opts.OptimizationEnabled())
-    {
-        // The remaining move elisions should only happen if optimizations are enabled
         return false;
     }
 
-    if (dst == src)
-    {
-        JITDUMP("\n -- suppressing mov because src and dst is same register.\n");
-        return true;
-    }
-
-    return false;
+    return canSkip || emitComp->opts.OptimizationEnabled();
 }
 
 //----------------------------------------------------------------------------------------
