@@ -10788,6 +10788,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srag:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id) & 0x3f;
+            assert(isValidSimm<20>(imm));
             if (!id->idIsSmallDsc())
             {
                 S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
@@ -10904,6 +10905,7 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srlg:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id) & 0x3f;
+            assert(isValidSimm<20>(imm));
             if (!id->idIsSmallDsc())
             {
                 S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
