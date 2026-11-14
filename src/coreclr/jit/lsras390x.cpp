@@ -1645,6 +1645,7 @@ int LinearScan::BuildNode(GenTree* tree)
         case GT_UMOD:
             NYI_IF(varTypeIsFloating(tree->TypeGet()), "FP Remainder in s390");
             srcCount = BuildBinaryUses(tree->AsOp());
+            buildInternalIntRegisterDefForNode(tree, genSingleTypeRegMask(REG_R1));
             buildInternalRegisterUses();
             assert(dstCount == 1);
             BuildDef(tree);
@@ -1665,6 +1666,7 @@ int LinearScan::BuildNode(GenTree* tree)
         case GT_UDIV:
         {
             srcCount = BuildBinaryUses(tree->AsOp());
+            buildInternalIntRegisterDefForNode(tree, genSingleTypeRegMask(REG_R1));
             buildInternalRegisterUses();
             assert(dstCount == 1);
             BuildDef(tree);
