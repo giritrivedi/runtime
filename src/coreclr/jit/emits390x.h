@@ -1789,6 +1789,10 @@ void emitIns_R_R_R_I_LdStPair(instruction ins,
 
 void emitIns_R_S(instruction ins, emitAttr attr, regNumber ireg, int varx, int offs);
 
+// RSY-format instruction: R1 (dst), R3 (src), B2 (baseReg / shiftReg), D2 (displacement / imm shift)
+void emitIns_R_R_S(
+    instruction ins, emitAttr attr, regNumber reg1, regNumber reg2, int varx, int offs);
+
 void emitIns_R_R_S_S(
     instruction ins, emitAttr attr, emitAttr attr2, regNumber ireg, regNumber ireg2, int varx, int offs);
 
