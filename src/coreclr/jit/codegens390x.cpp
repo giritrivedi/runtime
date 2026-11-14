@@ -579,9 +579,9 @@ void CodeGen::genCodeForTreeNode(GenTree* treeNode)
 #endif // PROFILING_SUPPORTED
             break;
 
-//        case GT_LCLHEAP:
-//            genLclHeap(treeNode);
-//            break;
+        case GT_LCLHEAP:
+            genLclHeap(treeNode);
+            break;
 
         case GT_CNS_INT:
         case GT_CNS_DBL:
@@ -5286,7 +5286,8 @@ void CodeGen::genFnEpilog(BasicBlock* block)
         }
 #else  // TARGET_ARM64
 	int totalFrameSize = genTotalFrameSize();
-	GetEmitter()->emitIns_R_R_R_I(INS_lmg, EA_PTRSIZE, REG_FP, REG_SP, REG_SPBASE, totalFrameSize + 88);
+        regNumber lmgBase = compiler->compLocallocUsed ? REG_FPBASE : REG_SPBASE;
+        GetEmitter()->emitIns_R_R_R_I(INS_lmg, EA_PTRSIZE, REG_FP, REG_SP, lmgBase, totalFrameSize + 88);
         inst_RV(INS_ret, REG_LR, TYP_I_IMPL);
         compiler->unwindReturn(REG_LR);
 #endif // TARGET_ARM64
@@ -5965,6 +5966,146 @@ void CodeGen::genZeroInitFrame(unsigned frameSize, regNumber initReg, bool* pIni
     {
         *pInitRegZeroed = (initReg == rZero);
     }
+}
+//-----------------------------------------------------------------------------
+// genLclHeap: Dynamic memory allocation on stack frame
+//
+// Moves r15 down by (aligned size + RSA + outgoing arg area) and
+// returns the address just above the save/outgoing area, so calls made after the
+// localloc cannot overwrite the buffer. The back-chain is copied to the new r15.
+//
+void CodeGen::genLclHeap(GenTree* tree)
+{
+    assert(tree->OperIs(GT_LCLHEAP));
+    assert(compiler->compLocallocUsed);
+
+    GenTree*  size      = tree->AsOp()->gtOp1;
+    emitter*  emit      = GetEmitter();
+    regNumber targetReg = tree->GetRegNum();
+
+    noway_assert((genActualType(size->gtType) == TYP_INT) || (genActualType(size->gtType) == TYP_I_IMPL));
+    noway_assert(isFramePointerUsed());
+    noway_assert(genStackLevel == 0);
+
+    const ssize_t frameBelow = S390X_REG_SAVE_AREA_SIZE + (ssize_t)compiler->lvaOutgoingArgSpaceSize;
+
+    if (size->IsCnsIntOrI())
+    {
+        assert(size->isContained());
+        size_t amount = size->AsIntCon()->gtIconVal;
+
+        if (amount == 0)
+        {
+            emit->emitIns_R_I(INS_lgfi, EA_8BYTE, targetReg, 0);
+            genProduceReg(tree);
+            return;
+        }
+
+        // Round size up to a multiple of STACK_ALIGN (8) so SP stays 8-byte aligned.
+        ssize_t alignedSize = (ssize_t)AlignUp(amount, STACK_ALIGN);
+
+        // Read old backchain from 0(SP) before adjusting SP.
+        emit->emitIns_R_R_I(INS_lg, EA_8BYTE, targetReg, REG_SPBASE, 0);
+
+        emit->emitIns_R_I(INS_agfi, EA_8BYTE, REG_SPBASE, -(int)alignedSize);
+
+        // Store preserved caller backchain at new 0(SP).
+        emit->emitIns_R_R_I(INS_stg, EA_8BYTE, targetReg, REG_SPBASE, 0);
+
+        emit->emitIns_R_R(INS_lgr, EA_8BYTE, targetReg, REG_SPBASE);
+        emit->emitIns_R_I(INS_agfi, EA_8BYTE, targetReg, (int)frameBelow);
+
+        // Zero out memory using XC.
+        if (compiler->info.compInitMem)
+        {
+            if (alignedSize <= 4095)
+            {
+                int offset = 0;
+                while (offset < (int)alignedSize)
+                {
+                    int chunkLen = ((int)alignedSize - offset > 256) ? 256 : ((int)alignedSize - offset);
+                    emit->emitIns_SS(INS_xc, chunkLen, targetReg, offset, targetReg, offset);
+                    offset += chunkLen;
+                }
+            }
+            else
+            {
+                // For large sizes (> 4095), zero in a loop stepping the pointer with disp 0.
+                size_t chunks = alignedSize / 256;
+                size_t leftover  = alignedSize % 256;
+
+                if (chunks > 0)
+                {
+                    BasicBlock* loop   = genCreateTempLabel();
+                    regNumber   cntReg = internalRegisters.Extract(tree);
+                    emit->emitIns_R_I(INS_lgfi, EA_8BYTE, cntReg, chunks);
+
+                    genDefineTempLabel(loop);
+                    emit->emitIns_SS(INS_xc, 256, targetReg, 0, targetReg, 0);
+                    emit->emitIns_R_I(INS_aghi, EA_8BYTE, targetReg, 256);
+                    emit->emitIns_R_I(INS_aghi, EA_8BYTE, cntReg, -1);
+                    emit->emitIns_R_I(INS_cgfi, EA_8BYTE, cntReg, 0);
+                    inst_JMP(EJ_ne, loop);
+                }
+
+                // Zero any remaining trailing bytes (remainder < 256 bytes)
+                if (leftover > 0)
+                {
+                    emit->emitIns_SS(INS_xc, leftover, targetReg, 0, targetReg, 0);
+                }
+                // Compute buffer (SP + frameBelow).
+                emit->emitIns_R_R(INS_lgr, EA_8BYTE, targetReg, REG_SPBASE);
+                emit->emitIns_R_I(INS_agfi, EA_8BYTE, targetReg, (int)frameBelow);
+            }
+        }
+    }
+    else
+    {
+        regNumber   sizeReg    = genConsumeReg(size);
+        regNumber   alignedReg = internalRegisters.Extract(tree);
+        BasicBlock* endLabel   = genCreateTempLabel();
+
+        // Zero-extending a 32-bit value so the upper 32 bits are clean.
+        emit->emitIns_R_R(size->TypeIs(TYP_INT) ? INS_llgfr : INS_lgr, EA_8BYTE, alignedReg, sizeReg);
+
+        emit->emitIns_R_I(INS_lgfi, EA_8BYTE, targetReg, 0);
+        emit->emitIns_R_I(INS_cgfi, EA_8BYTE, alignedReg, 0);
+        inst_JMP(EJ_eq, endLabel);
+
+        // alignedReg = (size + 7) & ~7.
+        emit->emitIns_R_I(INS_agfi, EA_8BYTE, alignedReg, 7);
+        emit->emitIns_R_I(INS_nill, EA_8BYTE, alignedReg, 0xFFF8);
+
+        // Read old backchain from 0(SP) before adjusting SP.
+        emit->emitIns_R_R_I(INS_lg, EA_8BYTE, targetReg, REG_SPBASE, 0);
+
+        emit->emitIns_R_R(INS_sgr, EA_8BYTE, REG_SPBASE, alignedReg);
+
+        // Store preserved caller backchain at new 0(SP).
+        emit->emitIns_R_R_I(INS_stg, EA_8BYTE, targetReg, REG_SPBASE, 0);
+
+        // Zero out memory using hardware XC loop.
+        if (compiler->info.compInitMem)
+        {
+            BasicBlock* loop = genCreateTempLabel();
+
+            emit->emitIns_R_R(INS_lgr, EA_8BYTE, targetReg, REG_SPBASE);
+            emit->emitIns_R_I(INS_agfi, EA_8BYTE, targetReg, (int)frameBelow);
+
+            genDefineTempLabel(loop);
+            emit->emitIns_SS(INS_xc, 8, targetReg, 0, targetReg, 0);
+            emit->emitIns_R_I(INS_aghi, EA_8BYTE, targetReg, 8);
+            emit->emitIns_R_I(INS_aghi, EA_8BYTE, alignedReg, -8);
+            emit->emitIns_R_I(INS_cgfi, EA_8BYTE, alignedReg, 0);
+            inst_JMP(EJ_ne, loop);
+        }
+
+        emit->emitIns_R_R(INS_lgr, EA_8BYTE, targetReg, REG_SPBASE);
+        emit->emitIns_R_I(INS_agfi, EA_8BYTE, targetReg, (int)frameBelow);
+        genDefineTempLabel(endLabel);
+    }
+
+    genProduceReg(tree);
 }
 //-----------------------------------------------------------------------------
 // genAllocLclFrame: Allocate the local stack frame for s390x architecture

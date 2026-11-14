@@ -1972,11 +1972,7 @@ int LinearScan::BuildNode(GenTree* tree)
             else
             {
                 srcCount = 1;
-                if (!compiler->info.compInitMem)
-                {
-                    buildInternalIntRegisterDefForNode(tree);
-                    buildInternalIntRegisterDefForNode(tree);
-                }
+                buildInternalIntRegisterDefForNode(tree);
             }
 
             if (!size->isContained())

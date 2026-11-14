@@ -3294,6 +3294,7 @@ void emitter::emitIns_R_I(instruction ins,
         case INS_lgfi:
         case INS_iihf:
         case INS_iilf:
+        case INS_nill:
         case INS_chi:
         case INS_cfi:
         case INS_cgfi:
@@ -7537,7 +7538,7 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
     int     disp = base + offs;
     ssize_t imm  = disp;
 
-    regNumber reg2 = REG_SPBASE;//encodingSPtoZR(FPbased ? REG_FPBASE : REG_SPBASE);
+    regNumber reg2 = FPbased ? REG_FPBASE : REG_SPBASE;
 
     // TODO-ARM64-CQ: use unscaled loads?
     /* Figure out the encoding format of the instruction */
@@ -7851,7 +7852,7 @@ void emitter::emitIns_S_R(instruction ins, emitAttr attr, regNumber reg1, int va
     ssize_t imm  = disp;
 
     // TODO-ARM64-CQ: with compLocallocUsed, should we use REG_SAVED_LOCALLOC_SP instead?
-    regNumber reg2 = REG_SPBASE;//encodingSPtoZR(FPbased ? REG_FPBASE : REG_SPBASE);
+    regNumber reg2 = FPbased ? REG_FPBASE : REG_SPBASE;
 
     // TODO-ARM64-CQ: use unscaled loads?
     /* Figure out the encoding format of the instruction */
@@ -10370,6 +10371,13 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_lghi:
             imm = emitGetInsSC(id);
             assert(isValidSimm<16>(imm));
+            op = emitInsCode(ins, fmt);
+            S390_RI_a(dst, op, id->idReg1(), imm);
+            break;
+
+        case INS_nill:
+            imm = emitGetInsSC(id);
+            assert(isValidUimm<16>(imm));
             op = emitInsCode(ins, fmt);
             S390_RI_a(dst, op, id->idReg1(), imm);
             break;
