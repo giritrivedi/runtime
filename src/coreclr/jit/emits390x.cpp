@@ -3294,6 +3294,7 @@ void emitter::emitIns_R_I(instruction ins,
         case INS_lgfi:
         case INS_iihf:
         case INS_iilf:
+        case INS_nill:
         case INS_chi:
         case INS_cfi:
         case INS_cgfi:
@@ -7387,7 +7388,7 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
     int     disp = base + offs;
     ssize_t imm  = disp;
 
-    regNumber reg2 = REG_SPBASE;//encodingSPtoZR(FPbased ? REG_FPBASE : REG_SPBASE);
+    regNumber reg2 = FPbased ? REG_FPBASE : REG_SPBASE;
 
     // TODO-ARM64-CQ: use unscaled loads?
     /* Figure out the encoding format of the instruction */
@@ -7551,6 +7552,35 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
 
 /*****************************************************************************
  *
+ *  Add an RSY-format instruction referencing two registers and a displacement / base register.
+ *  Encodes RSY-a format shift/rotate instructions (e.g. srlg, sllg, srag, rllg) where:
+ *    - reg1: Destination register (R1)
+ *    - reg2: Source register (R3)
+ *    - varx: Shift count register number (B2), or 0 for REG_R0 (immediate shift)
+ *    - offs: 20-bit signed displacement / immediate shift amount (D2)
+ */
+void emitter::emitIns_R_R_S(
+    instruction ins, emitAttr attr, regNumber reg1, regNumber reg2, int varx, int offs)
+{
+    assert(isGeneralRegister(reg1));
+    assert(isGeneralRegister(reg2));
+
+    // For RSY shift/rotate operations (srlg, sllg, srag, rllg), varx is not a stack slot (0 or -1),
+    // and offs carries the displacement/shift amount.
+    instrDesc* id = emitNewInstrCns(attr, offs);
+    id->idIns(ins);
+    id->idInsFmt(IF_NONE);
+    id->idReg1(reg1);
+    id->idReg2(reg2);
+    // If varx is used to pass a register number or 0 for REG_R0:
+    id->idReg3(varx != 0 ? (regNumber)varx : REG_R0);
+
+    dispIns(id);
+    appendToCurIG(id);
+}
+
+/*****************************************************************************
+ *
  *  Add an instruction referencing two register and consecutive stack-based local variable slots.
  */
 void emitter::emitIns_R_R_S_S(
@@ -7672,7 +7702,7 @@ void emitter::emitIns_S_R(instruction ins, emitAttr attr, regNumber reg1, int va
     ssize_t imm  = disp;
 
     // TODO-ARM64-CQ: with compLocallocUsed, should we use REG_SAVED_LOCALLOC_SP instead?
-    regNumber reg2 = REG_SPBASE;//encodingSPtoZR(FPbased ? REG_FPBASE : REG_SPBASE);
+    regNumber reg2 = FPbased ? REG_FPBASE : REG_SPBASE;
 
     // TODO-ARM64-CQ: use unscaled loads?
     /* Figure out the encoding format of the instruction */
@@ -10201,6 +10231,13 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             S390_RI_a(dst, op, id->idReg1(), imm);
             break;
 
+        case INS_nill:
+            imm = emitGetInsSC(id);
+            assert(isValidUimm<16>(imm));
+            op = emitInsCode(ins, fmt);
+            S390_RI_a(dst, op, id->idReg1(), imm);
+            break;
+
 	    case INS_nop:
             op = emitInsCode(ins, fmt);
             S390_RR(dst, op, 0, 0);
@@ -10614,8 +10651,17 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srak:
         case INS_srag:
             op = emitInsCode(ins, fmt);
-            imm = emitGetInsSC(id);
-            S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_NA, imm & 0x3f);
+            imm = emitGetInsSC(id) & 0x3f;
+            assert(isValidSimm<20>(imm));
+            if (!id->idIsSmallDsc())
+            {
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
+            }
+            else
+            {
+                // constant count: B2 = r0, D2 = imm
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_R0, imm);
+            }
             break;
 
         case INS_sllk:
@@ -10625,7 +10671,8 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_R0, imm & 0x3f);
             break;
 
-        case INS_nihf:
+        case INS_nilf:
+	    case INS_nihf:
             imm = emitGetInsSC(id);
             assert(isValidUimm<32>(imm));
             op = emitInsCode(ins, fmt);
@@ -10723,7 +10770,16 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
         case INS_srlg:
             op = emitInsCode(ins, fmt);
             imm = emitGetInsSC(id) & 0x3f;
-            S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_NA, imm & 0x3f);
+            assert(isValidSimm<20>(imm));
+            if (!id->idIsSmallDsc())
+            {
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), id->idReg3(), imm);
+            }
+            else
+            {
+                // constant count: B2 = r0, D2 = imm
+                S390_RSY_a(dst, op, id->idReg1(), id->idReg2(), REG_R0, imm);
+            }
             break;
 
         case INS_llgf:
