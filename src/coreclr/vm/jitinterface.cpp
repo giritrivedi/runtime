@@ -12447,7 +12447,6 @@ static bool isInterpreted(MethodDesc* ftnDesc, const char* ftnName)
 {
     // List of functions to be interpreted 
     static const char* InterPretedFunctions[] = {
-	    "WriteLine",
     };
 
     const size_t numFunctions = sizeof(InterPretedFunctions) / sizeof(InterPretedFunctions[0]);
