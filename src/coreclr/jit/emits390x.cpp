@@ -10848,20 +10848,14 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_brasl:
             //imm = id->idAddr()->iiaGetJitDataOffset();
+            // TODO-S390X: move the relative offset and relocation handling for calls into emitOutputLJ
             if (!id->idIsCall())
             {
                 dst = emitOutputLJ(ig, dst, id);
                 sz  = sizeof(instrDescJmp);
                 break;
             }
-            if (id->idIsCall())
-            {
-    		imm = 0;
-	    }
-	    else
-	    {
-    		imm = id->idAddr()->iiaGetJitDataOffset();
-	    }
+            imm = 0;
             op = emitInsCode(ins, fmt);
             assert((id->idReg1() >= 0) && (id->idReg1() <= 15));
             assert((imm >= -0x80000000LL) && (imm <= 0x7FFFFFFFLL));
