@@ -594,6 +594,7 @@ SingleTypeRegSet LinearScan::getConsecutiveCandidates(SingleTypeRegSet  allCandi
 //
 int LinearScan::BuildPutArgSplit(GenTreePutArgSplit* argNode)
 {
+    _ASSERTE(!"NYI");
     int srcCount = 0;
     assert(argNode->gtOper == GT_PUTARG_SPLIT);
 
@@ -1085,7 +1086,8 @@ int LinearScan::BuildCall(GenTreeCall* call)
 //    The number of sources consumed by this node.
 //
 int LinearScan::BuildSelect(GenTreeOp* select)
-{   
+{
+    _ASSERTE(!"NYI");
     assert(select->OperIs(GT_SELECT, GT_SELECTCC));
     
     int srcCount = 0;
