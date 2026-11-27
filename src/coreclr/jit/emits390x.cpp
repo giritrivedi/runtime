@@ -58,6 +58,7 @@ const emitJumpKind emitReverseJumpKinds[] = {
 
 /*static*/ emitJumpKind emitter::emitInsToJumpKind(instruction ins)
 {
+    _ASSERTE(!"NYI");
     for (unsigned i = 0; i < ArrLen(emitJumpKindInstructions); i++)
     {
         if (ins == emitJumpKindInstructions[i])
@@ -87,6 +88,8 @@ const emitJumpKind emitReverseJumpKinds[] = {
 
 size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
 {
+    assert(id != nullptr);
+    assert(id->idIns() < (instruction)INS_count && "Invalid instruction opcode");
     if (emitIsSmallInsDsc(id))
         return SMALL_IDSC_SIZE;
 
@@ -106,6 +109,7 @@ size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
             break;
 
         case ID_OP_JMP:
+	    assert((id->idIns() != INS_none) && "Jump descriptor must have a valid instruction");
             return sizeof(instrDescJmp);
 
         case ID_OP_CALL:
@@ -124,6 +128,7 @@ size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
             break;
 
         default:
+	    assert(!"Unexpected ID_OPS format in emitSizeOfInsDsc");
             NO_WAY("unexpected instruction descriptor format");
             break;
     }
@@ -173,7 +178,7 @@ size_t emitter::emitSizeOfInsDsc(instrDesc* id) const
  */
 void emitter::emitInsSanityCheck(instrDesc* id)
 {
-    //_ASSERTE(!"NYI");
+    _ASSERTE(!"NYI");
     /* What instruction format have we got? */
 #if 0
     switch (id->idInsFmt())
@@ -964,8 +969,8 @@ void emitter::emitInsSanityCheck(instrDesc* id)
 
 bool emitter::emitInsMayWriteToGCReg(instrDesc* id)
 {
-    return false;
-    //_ASSERTE(!"NYI");
+    //return false;
+    _ASSERTE(!"NYI");
 #if 0
     instruction ins = id->idIns();
     insFormat   fmt = id->idInsFmt();
@@ -1083,8 +1088,8 @@ bool emitter::emitInsMayWriteToGCReg(instrDesc* id)
 
 bool emitter::emitInsWritesToLclVarStackLoc(instrDesc* id)
 {
-    return false;
-    //_ASSERTE(!"NYI");
+    //return false;
+    _ASSERTE(!"NYI");
 #if 0
     if (!id->idIsLclVar())
         return false;
@@ -1111,8 +1116,8 @@ bool emitter::emitInsWritesToLclVarStackLoc(instrDesc* id)
 
 bool emitter::emitInsWritesToLclVarStackLocPair(instrDesc* id)
 {
-    return false;
-    //_ASSERTE(!"NYI");
+    //return false;
+    _ASSERTE(!"NYI");
 #if 0
     if (!id->idIsLclVar())
         return false;
@@ -1402,6 +1407,7 @@ static const char * const  bRegNames[] =
 //
 const char* emitter::emitRegName(regNumber reg, emitAttr size, bool varName) const
 {
+    _ASSERTE(!"NYI");
     assert(reg < REG_COUNT);
 
     const char* rn = nullptr;
@@ -1596,7 +1602,7 @@ bool emitter::emitInsIsVectorNarrow(instruction ins)
 //
 bool emitter::emitInsIsVectorWide(instruction ins)
 {
- //   _ASSERTE(!"NYI");
+    _ASSERTE(!"NYI");
     if (ins < ArrLen(CodeGenInterface::instInfo))
         return (CodeGenInterface::instInfo[ins] & WID) != 0;
     else
@@ -1635,6 +1641,7 @@ bool emitter::emitInsDestIsOp2(instruction ins)
 
 emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 {
+    assert((unsigned)ins < (unsigned)INS_count && "Instruction enum out of bounds in emitInsCode");
     code_t code = BAD_CODE;
     // clang-format off
     const static code_t insCode[] =
@@ -1651,6 +1658,7 @@ emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 // true if this 'imm' can be encoded as a input operand to a mov instruction
 /*static*/ bool emitter::emitIns_valid_imm_for_mov(INT64 imm, emitAttr size)
 {
+	_ASSERTE(!"NYI");
 //    // Check for "MOV (wide immediate)".
 //    if (canEncodeHalfwordImm(imm, size))
 //        return true;
@@ -1709,6 +1717,7 @@ emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 // true if this 'imm' can be encoded as a input operand to a fmov instruction
 /*static*/ bool emitter::emitIns_valid_imm_for_fmov(double immDbl)
 {
+    _ASSERTE(!"NYI");
     if (canEncodeFloatImm8(immDbl))
         return true;
 
@@ -1718,7 +1727,7 @@ emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 // true if this 'imm' can be encoded as a input operand to an add instruction
 /*static*/ bool emitter::emitIns_valid_imm_for_add(INT64 imm, emitAttr size)
 {
-   // _ASSERTE(!"NYI");
+   _ASSERTE(!"NYI");
 //#if 0
     if (unsigned_abs(imm) <= 0x0fff)
         return true;
@@ -1732,7 +1741,7 @@ emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 // true if this 'imm' can be encoded as a input operand to an non-add/sub alu instruction
 /*static*/ bool emitter::emitIns_valid_imm_for_cmp(INT64 imm, emitAttr size)
 {
-    //_ASSERTE(!"NYI");
+    _ASSERTE(!"NYI");
 //#if 0
     return emitIns_valid_imm_for_add(imm, size);
 //#endif
@@ -2056,6 +2065,7 @@ emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 
 /*static*/ bool emitter::canEncodeBitMaskImm(INT64 imm, emitAttr size, emitter::bitMaskImm* wbBMI)
 {
+    _ASSERTE(!"NYI");
 #if 0
     unsigned immWidth = getBitWidth(size);
     unsigned maxLen;
@@ -2280,6 +2290,7 @@ emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 
 /*static*/ INT64 emitter::emitDecodeHalfwordImm(const emitter::halfwordImm hwImm, emitAttr size)
 {
+    _ASSERTE(!"NYI");
     assert(isValidGeneralDatasize(size)); // Only EA_4BYTE or EA_8BYTE forms
 
     unsigned hw  = hwImm.immHW;
@@ -2535,6 +2546,7 @@ emitter::code_t emitter::emitInsCode(instruction ins, insFormat fmt)
 
 /*static*/ bool emitter::canEncodeFloatImm8(double immDbl, emitter::floatImm8* wbFPI)
 {
+    _ASSERTE(!"NYI");
     bool   canEncode = false;
     double val       = immDbl;
 
@@ -3121,6 +3133,7 @@ void emitter::emitIns_I(instruction ins, emitAttr attr, ssize_t imm)
 
 void emitter::emitIns_R(instruction ins, emitAttr attr, regNumber reg, insOpts opt /* = INS_OPTS_NONE */)
 {
+    assert(genIsValidReg(reg) && "Invalid register passed to emitIns_R");
     insFormat fmt = IF_NONE;
 
     /* Figure out the encoding format of the instruction */
@@ -3128,6 +3141,8 @@ void emitter::emitIns_R(instruction ins, emitAttr attr, regNumber reg, insOpts o
     {
         case INS_br:
         case INS_ret:
+	    assert(genIsValidReg(reg));
+	    assert(reg != REG_R0 && "R0 cannot be used as target register for branch/return on s390x");
             assert(isGeneralRegister(reg));
             fmt = IF_RR;
             break;
@@ -3262,6 +3277,11 @@ void emitter::emitIns_R_I(instruction ins,
     insFormat fmt       = IF_NONE;
     bool      canEncode = false;
     instrDesc* id = emitNewInstrSC(attr, imm);
+
+    assert(genIsValidReg(reg));
+    assert(isGeneralRegister(reg));
+    assert(isValidGeneralDatasize(size));
+    assert(insOptsNone(opt));
 
     /* Figure out the encoding format of the instruction */
     switch (ins)
@@ -3650,6 +3670,8 @@ void emitter::emitIns_Mov(
 {
     assert(IsMovInstruction(ins));
     assert(insOptsNone(opt));
+    assert(genIsValidReg(dstReg));
+    assert(genIsValidReg(srcReg));
 
     emitAttr  size     = EA_SIZE(attr);
 
@@ -3715,6 +3737,8 @@ void emitter::emitIns_R_R(instruction     ins,
     emitAttr  elemsize = EA_UNKNOWN;
     insFormat fmt      = IF_NONE;
 
+    assert(genIsValidReg(reg1));
+    assert(genIsValidReg(reg2));
     /* Figure out the encoding format of the instruction */
     switch (ins)
     {
@@ -4439,7 +4463,10 @@ void emitter::emitIns_R_R(instruction     ins,
             case INS_lgdr:  ins = INS_vlgvg;  break;
             case INS_ler:   ins = INS_vlr;    break;
             case INS_ldr:   ins = INS_vlr;    break;
-            default: break;
+            default:
+		unreached();
+		assert(!"Unhandled instruction in needsVectorEncoding");
+		break;
         }
     }
 
@@ -4590,6 +4617,11 @@ void emitter::emitIns_R_R_I(instruction     ins,
     bool      setFlags   = false;
     unsigned  scale      = 0;
     bool      unscaledOp = false;
+
+    assert(genIsValidReg(reg1));
+    assert(genIsValidReg(reg2));
+    assert(insOptsNone(opt));
+    assert(sopt == INS_SCALABLE_OPTS_NONE);
 
 #if 0
     /* Figure out the encoding format of the instruction */
@@ -5303,6 +5335,7 @@ void emitter::emitIns_R_R_I(instruction     ins,
             case INS_lgb:
             case INS_lgh:
             case INS_lgf:
+		assert(isValidSimm<20>(imm));
                 fmt = IF_RXY_A;
                 break;
 
@@ -5312,6 +5345,7 @@ void emitter::emitIns_R_R_I(instruction     ins,
             case INS_st:
             case INS_stc:
             case INS_sth:
+		assert(isValidUimm<12>(imm));
                 fmt = IF_RX_A;
                 break;
 
@@ -5324,6 +5358,7 @@ void emitter::emitIns_R_R_I(instruction     ins,
             case INS_srlg:
             case INS_rll:
             case INS_rllg:
+		assert(isValidSimm<20>(imm));
                 fmt = IF_RSY_A;
                 break;
 
@@ -5339,6 +5374,7 @@ void emitter::emitIns_R_R_I(instruction     ins,
                 break;
 
             default:
+		unreached();
                 break;
         }
     }
@@ -5351,9 +5387,14 @@ void emitter::emitIns_R_R_I(instruction     ins,
             case INS_ldy:  ins = INS_vleg;  break;
             case INS_stey: ins = INS_vstef; break;
             case INS_stdy: ins = INS_vsteg; break;
-            default: break;
+            default:
+	        unreached();
+	        assert(!"Unhandled instruction for isHighVectorRegister in emitIns_R_R_I");
+		break;
         }
     }
+    assert(genIsValidReg(reg1));
+    assert(genIsValidReg(reg2));
 
     instrDesc* id = emitNewInstrSC(attr, imm);
 
@@ -5495,6 +5536,10 @@ void emitter::emitIns_R_R_R(instruction     ins,
     emitAttr  elemsize = EA_UNKNOWN;
     insFormat fmt      = IF_NONE;
 
+    assert(genIsValidReg(reg1));
+    assert(genIsValidReg(reg2));
+    assert(genIsValidReg(reg3));
+
     /* Figure out the encoding format of the instruction */
     switch (ins)
     {
@@ -5580,6 +5625,9 @@ void emitter::emitIns_R_R_R(instruction     ins,
                 break;
             }
             // Base instruction
+	    assert(isGeneralRegister(reg1));
+            assert(isGeneralRegister(reg2));
+            assert(isGeneralRegister(reg3));
             //FALLTHROUGH;
 #if 0
         case INS_adds:
@@ -5587,6 +5635,7 @@ void emitter::emitIns_R_R_R(instruction     ins,
 #endif
             emitIns_R_R_R_I(ins, attr, reg1, reg2, reg3, 0, opt);
             return;
+
 #if 0
         case INS_cmeq:
         case INS_cmge:
@@ -5782,8 +5831,15 @@ void emitter::emitIns_R_R_R(instruction     ins,
         case INS_bics:
         case INS_eon:
 #endif
+	    assert(isGeneralRegister(reg1));
+            assert(isGeneralRegister(reg2));
+            assert(isGeneralRegister(reg3));
             emitIns_R_R_R_I(ins, attr, reg1, reg2, reg3, 0, INS_OPTS_NONE);
             return;
+	default:
+            assert(!"Unhandled instruction in emitIns_R_R_R");
+            unreached();
+            break;
 #if 0
 
         case INS_bsl:
@@ -6343,6 +6399,13 @@ void emitter::emitIns_R_R_R_I(instruction     ins,
     bool      isAddSub = false;
     bool      setFlags = false;
     unsigned  scale    = 0;
+    assert(genIsValidReg(reg1));
+    assert(genIsValidReg(reg2));
+    assert(genIsValidReg(reg3));
+
+    assert(isGeneralRegister(reg1));
+    assert(isGeneralRegister(reg2));
+    assert(isGeneralRegister(reg3));
 
     /* Figure out the encoding format of the instruction */
     switch (ins)
@@ -6438,13 +6501,38 @@ void emitter::emitIns_R_R_R_I(instruction     ins,
         case INS_msgrkc:
         case INS_ark:
         case INS_srk:
+	case INS_agrk:
+        case INS_sgrk:
+        case INS_nrk:
+        case INS_ngrk:
+        case INS_ork:
+        case INS_ogrk:
+        case INS_xrk:
+        case INS_xgrk:
+        case INS_ncrk:
+        case INS_nork:
+        case INS_nogrk:
             setFlags = false;
             isAddSub = true;
             break;
 
         case INS_stmg:
         case INS_lmg:
+	case INS_sllk:
+        case INS_sllg:
+        case INS_srak:
+        case INS_srag:
+        case INS_srlk:
+        case INS_srlg:
+        case INS_rll:
+        case INS_rllg:
+            assert(isValidSimm<20>(imm));
             fmt = IF_RSY_A;
+            break;
+
+	default:
+            assert(!"Unhandled instruction in emitIns_R_R_R_I");
+            unreached();
             break;
 
 #if 0
@@ -7480,6 +7568,7 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
     bool      useRegForImm = false;
 
     assert(offs >= 0);
+    assert(genIsValidReg(reg1));
 
     /* Figure out the variable's frame position */
     bool    FPbased;
@@ -7626,10 +7715,15 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
             case INS_ldy:  ins = INS_vleg;  break;
             case INS_stey: ins = INS_vstef; break;
             case INS_stdy: ins = INS_vsteg; break;
-            default: break;
+            default:
+                unreached();
+		assert(!"Unhandled instruction for isHighVectorRegister in emitIns_R_S");
+		break;
         }
     }
 
+    assert(genIsValidReg(reg2));
+    assert(isValidSimm<20>(imm) && "Displacement out of 20-bit range for RXY in emitIns_R_S");
     instrDesc* id = emitNewInstrCns(attr, imm);
 
     id->idIns(ins);
@@ -7661,8 +7755,34 @@ void emitter::emitIns_R_S(instruction ins, emitAttr attr, regNumber reg1, int va
 void emitter::emitIns_R_R_S(
     instruction ins, emitAttr attr, regNumber reg1, regNumber reg2, int varx, int offs)
 {
-    assert(isGeneralRegister(reg1));
-    assert(isGeneralRegister(reg2));
+    assert(genIsValidReg(reg1) && isGeneralRegister(reg1));
+    assert(genIsValidReg(reg2) && isGeneralRegister(reg2));
+    assert(isValidSimm<20>(offs));
+
+    if (varx != 0)
+    {
+        assert(genIsValidReg((regNumber)varx) && isGeneralRegister((regNumber)varx));
+        assert((regNumber)varx != REG_R0 && "R0 cannot be used as base/shift register on s390x");
+    }
+
+    switch (ins)
+    {
+        case INS_sllk:
+        case INS_sllg:
+        case INS_srak:
+        case INS_srag:
+        case INS_srlk:
+        case INS_srlg:
+        case INS_rll:
+        case INS_rllg:
+            break;
+
+        default:
+            assert(!"Unhandled instruction in emitIns_R_R_S");
+            unreached();
+            break;
+    }
+
 
     // For RSY shift/rotate operations (srlg, sllg, srag, rllg), varx is not a stack slot (0 or -1),
     // and offs carries the displacement/shift amount.
@@ -7786,6 +7906,8 @@ void emitter::emitIns_S_R(instruction ins, emitAttr attr, regNumber reg1, int va
 	//return;
 
     assert(offs >= 0);
+    assert(genIsValidReg(reg1));
+
     emitAttr  size          = EA_SIZE(attr);
     insFormat fmt           = IF_NONE;
     unsigned  scale         = 0;
@@ -7907,9 +8029,15 @@ void emitter::emitIns_S_R(instruction ins, emitAttr attr, regNumber reg1, int va
             case INS_ldy:  ins = INS_vleg;  break;
             case INS_stey: ins = INS_vstef; break;
             case INS_stdy: ins = INS_vsteg; break;
-            default: break;
+            default:
+		unreached();
+		assert(!"Unhandled instruction for isHighVectorRegister in emitIns_S_R");
+		break;
         }
     }
+
+    assert(genIsValidReg(reg2));
+    assert(isValidSimm<20>(imm) && "Displacement out of 20-bit range for RXY in emitIns_S_R");
 
     instrDesc* id = emitNewInstrCns(attr, imm);
 
@@ -8361,6 +8489,9 @@ void emitter::emitSetShortJump(instrDescJmp* id)
 void emitter::emitIns_R_L(instruction ins, emitAttr attr, BasicBlock* dst, regNumber reg)
 {
     assert(dst->HasFlag(BBF_HAS_LABEL));
+    assert(dst != nullptr);
+    assert(genIsValidReg(reg));
+    assert(isGeneralRegister(reg));
 
     insFormat fmt = IF_NONE;
 
@@ -8371,9 +8502,10 @@ void emitter::emitIns_R_L(instruction ins, emitAttr attr, BasicBlock* dst, regNu
             fmt = IF_LARGEADR;
             break;
         default:
+	    assert(!"Unhandled instruction in emitIns_R_L");
             unreached();
     }
-
+    assert(fmt != IF_NONE);
     instrDescJmp* id = emitNewInstrJmp();
 
     id->idIns(ins);
@@ -8612,6 +8744,7 @@ void emitter::emitIns_Call(EmitCallType          callType,
     switch (callType)
     {
         case EC_FUNC_TOKEN:
+	    assert(addr != nullptr && "Direct call target address must not be null");
             ins = INS_brasl;
             id->idIns(ins);
             id->idInsOpt(INS_OPTS_NONE);
@@ -8624,6 +8757,9 @@ void emitter::emitIns_Call(EmitCallType          callType,
             break;
 
         case EC_INDIR_R:
+	    assert(genIsValidReg(ireg) && "Target register for indirect call must be valid");
+            assert(isGeneralRegister(ireg) && "Target register for indirect call must be a GPR");
+            assert(ireg != REG_R0 && "R0 cannot be used as target register for indirect branch in BASR");
             ins = INS_basr;
             id->idIns(ins);
             id->idReg1(REG_R14);  // Link register
@@ -8804,6 +8940,7 @@ void emitter::emitIns_Call(EmitCallType          callType,
 
 /*static*/ emitter::code_t emitter::insEncodeDatasize(emitAttr size)
 {
+    _ASSERTE(!"NYI");
 	//s390xmarker : do we really need this? this toggles a bit in the
 	// instruction to treat it as a 64 bit operation instruction
     if (size == EA_8BYTE)
@@ -9749,11 +9886,15 @@ BYTE* emitter::emitOutputLJ(insGroup* ig, BYTE* dst, instrDesc* i)
 
     id->idjTemp.idjAddr = (distVal > 0) ? dst : NULL;
 
+    assert((distVal & 1) == 0 && "Branch displacement must be 2-byte aligned on s390x");
+    assert(isValidSimm<32>(distVal / 2) && "Branch distance exceeds 32-bit signed halfword range");
     int32_t offset_hw = (int32_t)(distVal / 2);
     code_t op = emitInsCode(ins, IF_NONE);
 
     if (ins == INS_larl || (ins == INS_brasl))
     {
+        assert(genIsValidReg(id->idReg1()));
+        assert(isGeneralRegister(id->idReg1()));
         S390_RIL_b(dst, op, id->idReg1(), offset_hw);
         return dst;
     }
@@ -9772,7 +9913,9 @@ BYTE* emitter::emitOutputLJ(insGroup* ig, BYTE* dst, instrDesc* i)
         case INS_bl:  mask = 12; break;
         case INS_bo:  mask = 1;  break;
         case INS_bno: mask = 14; break;
-        default: unreached();
+        default:
+		assert(!"Unhandled branch instruction in emitOutputLJ");
+		unreached();
     }
 
     S390_RIL_a(dst, op, mask, offset_hw);
@@ -10119,6 +10262,7 @@ unsigned emitter::emitOutputCall(insGroup* ig, BYTE* dst, instrDesc* id, code_t 
 
 unsigned emitter::emitOutput_Instr(BYTE* dst, code_t code)
 {
+    _ASSERTE(!"NYI");
 	//s390xmarker: this also needs to be looked into
     assert(sizeof(code_t) == 4);
     BYTE* dstRW    = dst + writeableOffset;
@@ -10146,6 +10290,8 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
     instruction ins  = id->idIns();
     insFormat   fmt  = id->idInsFmt();
     emitAttr    size = id->idOpSize();
+    assert(dst != nullptr);
+    assert(id != nullptr);
 
 #ifdef DEBUG
 #if DUMP_GC_TABLES
@@ -10277,6 +10423,8 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
 
         case INS_ler:
         case INS_ldr:
+	    assert((id->idReg1() >= REG_V0) && (id->idReg1() <= REG_V15) && "High VR requires INS_vlr");
+            assert((id->idReg2() >= REG_V0) && (id->idReg2() <= REG_V15) && "High VR requires INS_vlr");
             op = emitInsCode(ins, fmt);
             S390_RR(dst, op, (id->idReg1() - REG_V0), (id->idReg2() - REG_V0));
             break;
@@ -10803,21 +10951,25 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             break;
 
         case INS_dr:
+	    assert(isEvenRegister(id->idReg1()) && "R1 must be even for DR");
             op = emitInsCode(ins, fmt);
             S390_RR(dst, op, id->idReg1(), id->idReg2());
             break;
 
         case INS_dsgr:
+	    assert(isEvenRegister(id->idReg1()) && "R1 must be even for DSGR/DLR/DLGR");
             op = emitInsCode(ins, fmt);
             S390_RRE(dst, op, id->idReg1(), id->idReg2());
             break;
 
         case INS_dlr:
+	    assert(isEvenRegister(id->idReg1()) && "R1 must be even for DSGR/DLR/DLGR");
             op = emitInsCode(ins, fmt);
             S390_RRE(dst, op, id->idReg1(), id->idReg2());
             break;
 
         case INS_dlgr:
+	    assert(isEvenRegister(id->idReg1()) && "R1 must be even for DSGR/DLR/DLGR");
             op = emitInsCode(ins, fmt);
             S390_RRE(dst, op, id->idReg1(), id->idReg2());
             break;
@@ -11200,6 +11352,7 @@ void emitter::emitDispComma()
  */
 void emitter::emitDispInst(instruction ins)
 {
+    _ASSERTE(!"NYI");
     const char* insstr = codeGen->genInsName(ins);
     size_t      len    = strlen(insstr);
 
@@ -11223,6 +11376,7 @@ void emitter::emitDispInst(instruction ins)
  */
 void emitter::emitDispImm(ssize_t imm, bool addComma, bool alwaysHex /* =false */, bool isAddrOffset /* =false */)
 {
+    _ASSERTE(!"NYI");
     if (isAddrOffset)
     {
         alwaysHex = true;
@@ -11479,6 +11633,7 @@ void emitter::emitDispExtendOpts(insOpts opt)
 //
 void emitter::emitDispReg(regNumber reg, emitAttr attr, bool addComma)
 {
+    _ASSERTE(!"NYI");
     emitAttr size = EA_SIZE(attr);
     printf(emitRegName(reg, size));
 
@@ -11874,6 +12029,7 @@ void emitter::emitDispAddrRRExt(regNumber reg1, regNumber reg2, insOpts opt, boo
 
 void emitter::emitDispInsHex(instrDesc* id, BYTE* code, size_t sz)
 {
+    _ASSERTE(!"NYI");
     if (!emitComp->opts.disCodeBytes)
     {
         return;
@@ -12034,6 +12190,8 @@ void emitter::emitDispIns(
 void emitter::emitDispInsHelp(
     instrDesc* id, bool isNew, bool doffs, bool asmfm, unsigned offset, BYTE* pCode, size_t sz, insGroup* ig)
 {
+    assert(id != nullptr);
+    assert(id->idIns() < (instruction)INS_count && "Invalid instruction opcode in disassembler");
 #ifdef DEBUG
     if (EMITVERBOSE)
     {
@@ -13387,6 +13545,8 @@ void emitter::emitDispInsHelp(
             break;
 
         default:
+	    assert(!"Unhandled instruction format in emitDispInsHelp");
+	    unreached();
             // fallback to display SVE instructions.
       //      emitDispInsSveHelp(id);
             break;
@@ -13418,6 +13578,7 @@ void emitter::emitDispInsHelp(
 
 void emitter::emitDispFrameRef(int varx, int disp, int offs, bool asmfm)
 {
+    _ASSERTE(!"NYI");
 #ifdef DEBUG
     printf("[");
 
@@ -13459,6 +13620,7 @@ void emitter::emitDispFrameRef(int varx, int disp, int offs, bool asmfm)
 //
 void emitter::emitInsLoadStoreOp(instruction ins, emitAttr attr, regNumber dataReg, GenTreeIndir* indir)
 {
+    assert(genIsValidReg(dataReg));
     GenTree* addr = indir->Addr();
 
     if (addr->isContained())
@@ -13474,10 +13636,15 @@ void emitter::emitInsLoadStoreOp(instruction ins, emitAttr attr, regNumber dataR
         }
 
         GenTree* memBase = indir->Base();
+	assert(genIsValidReg(memBase->GetRegNum()));
 
         if (indir->HasIndex())
         {
             GenTree* index = indir->Index();
+	    assert(memBase != nullptr && genIsValidReg(memBase->GetRegNum()));
+            assert(index != nullptr && genIsValidReg(index->GetRegNum()));
+            assert(memBase->GetRegNum() != REG_R0 && "R0 cannot be used as base register on s390x");
+            assert(index->GetRegNum() != REG_R0 && "R0 cannot be used as index register on s390x");
 
             if (offset != 0)
             {
@@ -13589,6 +13756,7 @@ void emitter::emitInsLoadStoreOp(instruction ins, emitAttr attr, regNumber dataR
 
 regNumber emitter::emitInsBinary(instruction ins, emitAttr attr, GenTree* dst, GenTree* src)
 {
+    _ASSERTE(!"NYI");
     // dst can only be a reg
     assert(!dst->isContained());
 
@@ -13620,7 +13788,10 @@ regNumber emitter::emitInsBinary(instruction ins, emitAttr attr, GenTree* dst, G
 regNumber emitter::emitInsTernary(instruction ins, emitAttr attr, GenTree* dst, GenTree* src1, GenTree* src2)
 {
     // dst can only be a reg
-    assert(!dst->isContained());
+    assert(dst != nullptr && !dst->isContained());
+    assert(src1 != nullptr);
+    assert(src2 != nullptr);
+    assert(genIsValidReg(dst->GetRegNum()));
 
     // find immed (if any) - it cannot be a dst
     // Only one src can be an int.
@@ -13630,9 +13801,9 @@ regNumber emitter::emitInsTernary(instruction ins, emitAttr attr, GenTree* dst, 
     if (varTypeIsFloating(dst))
     {
         // src1 can only be a reg
-        assert(!src1->isContained());
+        assert(!src1->isContained() && genIsValidReg(src1->GetRegNum()));
         // src2 can only be a reg
-        assert(!src2->isContained());
+        assert(!src2->isContained() && genIsValidReg(src2->GetRegNum()));
     }
     else // not floating point
     {
@@ -13679,6 +13850,7 @@ regNumber emitter::emitInsTernary(instruction ins, emitAttr attr, GenTree* dst, 
             ins = INS_subs;
         }
 */
+	assert(!varTypeIsFloating(dst));
         if (ins == INS_mul)
         {
             isMulOverflow = true;
@@ -13692,6 +13864,8 @@ regNumber emitter::emitInsTernary(instruction ins, emitAttr attr, GenTree* dst, 
 
     if (intConst != nullptr)
     {
+	assert(nonIntReg != nullptr && !nonIntReg->isContained());
+        assert(genIsValidReg(nonIntReg->GetRegNum()));
         emitIns_R_R_I(ins, attr, dst->GetRegNum(), nonIntReg->GetRegNum(), intConst->IconValue());
     }
     else
@@ -13785,7 +13959,7 @@ regNumber emitter::emitInsTernary(instruction ins, emitAttr attr, GenTree* dst, 
 
 void emitter::getMemoryOperation(instrDesc* id, unsigned* pMemAccessKind, bool* pIsLocalAccess)
 {
-    //_ASSERTE(!"NYI");
+    _ASSERTE(!"NYI");
     unsigned    memAccessKind = PERFSCORE_MEMORY_NONE;
     bool        isLocalAccess = false;
 #if 0
@@ -13968,7 +14142,7 @@ void emitter::getMemoryOperation(instrDesc* id, unsigned* pMemAccessKind, bool* 
 //
 emitter::insExecutionCharacteristics emitter::getInsExecutionCharacteristics(instrDesc* id)
 {
-    //_ASSERTE(!"NYI");
+    _ASSERTE(!"NYI");
     insExecutionCharacteristics result;
     instruction                 ins    = id->idIns();
     insFormat                   insFmt = id->idInsFmt();
@@ -15663,6 +15837,7 @@ bool emitter::IsMovInstruction(instruction ins)
 {
     switch (ins)
     {
+	case INS_lr:
         case INS_lgr:
         case INS_ldgr:
         case INS_lgdr:
@@ -15698,6 +15873,8 @@ bool emitter::IsMovInstruction(instruction ins)
 
 bool emitter::IsRedundantMov(instruction ins, emitAttr size, regNumber dst, regNumber src, bool canSkip)
 {
+    assert(genIsValidReg(dst));
+    assert(genIsValidReg(src));
     assert(IsMovInstruction(ins));
     if (dst != src)
     {

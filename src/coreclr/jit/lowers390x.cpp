@@ -172,6 +172,7 @@ bool Lowering::IsContainableImmed(GenTree* parentNode, GenTree* childNode) const
 //
 bool Lowering::IsContainableUnaryOrBinaryOp(GenTree* parentNode, GenTree* childNode) const
 {
+    _ASSERTE(!"NYI");
 #ifdef DEBUG
     // The node we're checking should be one of the two child nodes
     if (parentNode->OperIsBinary())
@@ -475,6 +476,9 @@ bool Lowering::IsContainableUnaryOrBinaryOp(GenTree* parentNode, GenTree* childN
 GenTree* Lowering::LowerStoreLoc(GenTreeLclVarCommon* storeLoc)
 {
     //_ASSERTE(!"NYI");
+    assert(storeLoc != nullptr);
+    assert(storeLoc->OperIs(GT_STORE_LCL_VAR, GT_STORE_LCL_FLD));
+    assert(storeLoc->GetLclNum() < comp->lvaCount);
 
     if (storeLoc->OperIs(GT_STORE_LCL_FLD))
     {
@@ -532,7 +536,9 @@ GenTree* Lowering::LowerStoreIndir(GenTreeStoreInd* node)
 //
 GenTree* Lowering::LowerMul(GenTreeOp* mul)
 {
+    assert(mul != nullptr);
     assert(mul->OperIsMul());
+    assert(mul->gtGetOp1() != nullptr && mul->gtGetOp2() != nullptr);
 
     if (comp->opts.OptimizationEnabled() && mul->OperIs(GT_MUL) && mul->IsValidLongMul())
     {
@@ -583,6 +589,10 @@ GenTree* Lowering::LowerMul(GenTreeOp* mul)
 //
 GenTree* Lowering::LowerBinaryArithmetic(GenTreeOp* binOp)
 {
+    assert(binOp != nullptr);
+    assert(binOp->OperIsBinary());
+    assert(binOp->gtGetOp1() != nullptr && binOp->gtGetOp2() != nullptr);
+
     if (comp->opts.OptimizationEnabled())
     {
         if (binOp->OperIs(GT_AND))
@@ -646,11 +656,17 @@ GenTree* Lowering::LowerBinaryArithmetic(GenTreeOp* binOp)
 //
 void Lowering::LowerBlockStore(GenTreeBlk* blkNode)
 {
+    assert(blkNode != nullptr);
+    assert(blkNode->OperIs(GT_STORE_BLK));
     //EX_THROW(HRException, (E_FAIL));
     //_ASSERTE(!"NYI");
+
     GenTree* dstAddr = blkNode->Addr();
     GenTree* src     = blkNode->Data();
     unsigned size    = blkNode->Size();
+
+    assert(dstAddr != nullptr && src != nullptr);
+    assert(size > 0);
 
     if (blkNode->OperIsInitBlkOp())
     {
@@ -671,6 +687,7 @@ void Lowering::LowerBlockStore(GenTreeBlk* blkNode)
         {
             src->SetContained();
             src = src->AsUnOp()->gtGetOp1();
+	    assert(src != nullptr);
         }
 
         if ((size <= comp->getUnrollThreshold(Compiler::UnrollKind::Memset)) && src->OperIs(GT_CNS_INT))
@@ -786,6 +803,8 @@ void Lowering::ContainBlockStoreAddress(GenTreeBlk* blkNode, unsigned size, GenT
 {
     //_ASSERTE(!"NYI");
 //#if 0
+    assert(blkNode != nullptr);
+    assert(addr != nullptr);
     assert(blkNode->OperIs(GT_STORE_BLK) && (blkNode->gtBlkOpKind == GenTreeBlk::BlkOpKindUnroll));
     assert(size < INT32_MAX);
 
@@ -841,7 +860,11 @@ void Lowering::ContainBlockStoreAddress(GenTreeBlk* blkNode, unsigned size, GenT
 void Lowering::LowerPutArgStkOrSplit(GenTreePutArgStk* putArgNode)
 {
 //GT_PUTARG_SPLIT is not present on s390x abi, anyways removed in mainline
+    assert(putArgNode != nullptr);
+    assert(putArgNode->OperIs(GT_PUTARG_STK));
     GenTree* src = putArgNode->Data();
+
+    assert(src != nullptr);
 
     if (src->TypeIs(TYP_STRUCT))
     {
@@ -915,12 +938,17 @@ GenTree* Lowering::LowerCast(GenTree* tree)
 //
 void Lowering::LowerRotate(GenTree* tree)
 {
+    assert(tree != nullptr);
+    assert(tree->OperIs(GT_ROL, GT_ROR));
+    assert(tree->AsOp()->gtOp1 != nullptr && tree->AsOp()->gtOp2 != nullptr);
+    assert(varTypeIsIntegral(tree->TypeGet()));
     if (tree->OperGet() == GT_ROR)
     {
         // There is no ROL instruction on ARM. Convert ROL into ROR.
         GenTree* rotatedValue        = tree->AsOp()->gtOp1;
         unsigned rotatedValueBitSize = genTypeSize(rotatedValue->gtType) * 8;
         GenTree* rotateRightIndexNode = tree->AsOp()->gtOp2;
+	assert(rotatedValueBitSize == 32 || rotatedValueBitSize == 64);
 
         if (rotateRightIndexNode->IsCnsIntOrI())
         {
@@ -1047,6 +1075,7 @@ void Lowering::LowerModPow2(GenTree* node)
 }
 #endif
 
+
 const int POST_INDEXED_ADDRESSING_MAX_DISTANCE = 16;
 
 //------------------------------------------------------------------------
@@ -1129,6 +1158,7 @@ bool Lowering::TryMoveAddSubRMWAfterIndir(GenTreeLclVarCommon* store)
 //
 void Lowering::MarkTree(GenTree* node)
 {
+    _ASSERTE(!"NYI");
     node->gtLIRFlags |= LIR::Flags::Mark;
     node->VisitOperands([=](GenTree* op) {
         MarkTree(op);
@@ -1144,6 +1174,7 @@ void Lowering::MarkTree(GenTree* node)
 //
 void Lowering::UnmarkTree(GenTree* node)
 {
+    _ASSERTE(!"NYI");
     node->gtLIRFlags &= ~LIR::Flags::Mark;
     node->VisitOperands([=](GenTree* op) {
         UnmarkTree(op);
@@ -2782,8 +2813,14 @@ void Lowering::ContainCheckBinary(GenTreeOp* node)
    // EX_THROW(HRException, (E_FAIL));
     //_ASSERTE(!"NYI");
 //#if 0
+    assert(node->OperIs(GT_ADD, GT_SUB, GT_MUL, GT_MULHI, GT_MUL_LONG, GT_AND, GT_AND_NOT, GT_OR, GT_XOR));
     GenTree* op1 = node->gtGetOp1();
     GenTree* op2 = node->gtGetOp2();
+
+    assert((op1 != nullptr) && (op2 != nullptr));
+
+    // This function decides containment, so nothing may be contained yet.
+    assert(!op1->isContained() && !op2->isContained());
 
     if (CheckImmedAndMakeContained(node, op2))
     {
@@ -2825,6 +2862,10 @@ void Lowering::ContainCheckBinary(GenTreeOp* node)
         }
     }
 #endif
+    // TODO-S390X: IsContainableImmed accepts only compare parents, so no ADD/SUB/AND/OR/XOR/MUL
+    // operand is contained today. IsContainableUnaryOrBinaryOp (ARM64 shifted operands) is intentionally
+    // not used: s390x has no shifted-register operands.
+    JITDUMP("TODO-S390X: ContainCheckBinary - operands of [%06u] left uncontained\n", comp->dspTreeID(node));
 //#endif
 }
 
@@ -2836,7 +2877,16 @@ void Lowering::ContainCheckBinary(GenTreeOp* node)
 //
 void Lowering::ContainCheckMul(GenTreeOp* node)
 {
+    // GT_MUL_LONG is included because LowerMul may have rewritten the node before calling us.
+    assert(node->OperIs(GT_MUL, GT_MULHI, GT_MUL_LONG));
     ContainCheckBinary(node);
+    // IsContainableImmed currently accepts only compare parents, so no multiply operand is
+    // contained. genCodeForBinary can emit msgfi/msfi for a contained op2 constant, but that
+    // would need a 32-bit range check in IsContainableImmed and matching LSRA support.
+    assert(!node->gtGetOp1()->isContained());
+    assert(!node->gtGetOp2()->isContained() || node->OperIs(GT_MUL));
+
+    JITDUMP("TODO-S390X: ContainCheckMul - multiply operands left uncontained for [%06u]\n", comp->dspTreeID(node));
 }
 
 //------------------------------------------------------------------------
@@ -2848,7 +2898,13 @@ void Lowering::ContainCheckMul(GenTreeOp* node)
 void Lowering::ContainCheckDivOrMod(GenTreeOp* node)
 {
     assert(node->OperIs(GT_DIV, GT_UDIV, GT_MOD, GT_UMOD));
-    // S390X doesnot have a div with immediate 
+    // S390X doesnot have a div with immediate
+    // // s390x has no divide-by-immediate: DR/DLR/DSGR/DLGR take register operands, and
+    // genCodeForDivMod reads both operand registers directly. Neither operand may be contained.
+    assert(!node->gtGetOp1()->isContained());
+    assert(!node->gtGetOp2()->isContained());
+
+    JITDUMP("TODO-S390X: ContainCheckDivOrMod - no operand containment for [%06u] (no div-by-immediate on s390x)\n", comp->dspTreeID(node));
 }
 
 //------------------------------------------------------------------------
@@ -2951,6 +3007,11 @@ void Lowering::ContainCheckStoreLoc(GenTreeLclVarCommon* storeLoc) const
 void Lowering::ContainCheckCast(GenTreeCast* node)
 {
     // S390X does not have contained cast
+    assert(node->OperIs(GT_CAST));
+    // Nothing is contained yet. genIntToIntCast/genIntToFloatCast consume CastOp() in a register.
+    assert(!node->CastOp()->isContained());
+
+    JITDUMP("TODO-S390X: ContainCheckCast - no cast operand containment on s390x (CAST [%06u] left uncontained)\n", comp->dspTreeID(node));
 }
 
 //------------------------------------------------------------------------
@@ -2963,6 +3024,9 @@ void Lowering::ContainCheckCompare(GenTreeOp* cmp)
 {
     GenTree* op1 = cmp->gtGetOp1();
     GenTree* op2 = cmp->gtGetOp2();
+    assert((op1 != nullptr) && (op2 != nullptr));
+    // Operands must not be contained yet - this function is what decides containment.
+    assert(!op1->isContained() && !op2->isContained());
 
     // s390x: Fold widening cast of constants to enable CGFI/CLGFI.
     if (op2->OperIs(GT_CAST) && !op2->gtOverflow() && varTypeIsLong(op2->TypeGet()))
@@ -2973,6 +3037,7 @@ void Lowering::ContainCheckCompare(GenTreeOp* cmp)
             ssize_t val = castOp->AsIntCon()->gtIconVal;
             if (val >= INT32_MIN && val <= INT32_MAX)
             {
+		assert(genActualTypeIsInt(castOp));
                 if (op2->AsCast()->IsZeroExtending())
                 {
                     val = (ssize_t)(uint32_t)val;
@@ -2987,6 +3052,7 @@ void Lowering::ContainCheckCompare(GenTreeOp* cmp)
                 BlockRange().Remove(op2);
                 cmp->gtOp2 = castOp;
                 op2 = castOp;
+		assert(cmp->gtGetOp2() == castOp);
             }
         }
     }
@@ -3199,6 +3265,7 @@ insCflags Lowering::TruthifyingFlags(GenCondition condition)
 //
 void Lowering::ContainCheckConditionalCompare(GenTreeCCMP* cmp)
 {
+    _ASSERTE(!"NYI");
     GenTree* op2 = cmp->gtOp2;
 
     if (op2->IsCnsIntOrI() && !op2->AsIntCon()->ImmedValNeedsReloc(comp))

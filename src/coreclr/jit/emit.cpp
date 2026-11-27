@@ -4520,6 +4520,7 @@ size_t emitter::emitIssue1Instr(insGroup* ig, instrDesc* id, BYTE** dp)
 // id->idInsSize(isz);
 #elif  defined(TARGET_S390X)
 // TODO: Giri : Something needs here ?
+        JITDUMP("TODO-S390X: instruction size over-estimated (estimated %u, actual %u)\n", estimatedSize, actualSize);
 #else
         /* It is fatal to over-estimate the instruction size */
         IMPL_LIMITATION("Over-estimated instruction size");
@@ -5862,6 +5863,11 @@ void emitter::emitLoopAlignment(DEBUG_ARG1(bool isPlacedBehindJmp))
         paddingBytes = emitComp->opts.compJitAlignLoopBoundary;
     }
     emitLongLoopAlign(paddingBytes DEBUG_ARG(isPlacedBehindJmp));
+#elif defined(TARGET_S390X)
+    // TODO-S390X: loop alignment is not implemented (INS_align has no encoding).
+    // Loop alignment must be disabled for s390x, otherwise the assert below fails.
+    paddingBytes = 0;
+    assert(!"Loop alignment is not supported on s390x");
 #endif
 
     assert(emitLastIns->idIns() == INS_align);

@@ -860,6 +860,11 @@ LinearScan::LinearScan(Compiler* theCompiler)
     availableIntRegs &= ~RBM_FPBASE.GetIntRegSet();
 #endif // ETW_EBP_FRAMED
 
+#ifdef TARGET_S390X
+    // R11 (FP), R14 (LR) and R15 (SP) must never be allocatable.
+    assert((availableIntRegs & (RBM_FP | RBM_LR | RBM_SP).GetIntRegSet()) == RBM_NONE);
+#endif
+
 #ifdef TARGET_AMD64
     availableFloatRegs  = RBM_ALLFLOAT.GetFloatRegSet();
     availableDoubleRegs = RBM_ALLDOUBLE.GetFloatRegSet();
@@ -2834,6 +2839,12 @@ void LinearScan::setFrameType()
         removeMask |= RBM_OPT_RSVD.GetIntRegSet();
     }
 #endif // TARGET_ARMARCH || TARGET_RISCV64
+       //
+#ifdef TARGET_S390X
+    // s390x never reserves REG_OPT_RSVD (R13), so LSRA may allocate it.
+    // Nothing may call rsGetRsvdReg() on this target.
+    assert((compiler->codeGen->regSet.rsMaskResvd & RBM_OPT_RSVD) == RBM_NONE);
+#endif
 
     if ((removeMask != RBM_NONE) && ((availableIntRegs & removeMask) != 0))
     {
